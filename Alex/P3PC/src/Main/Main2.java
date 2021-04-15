@@ -13,13 +13,25 @@ public class Main2 {
 		int numProductos = Integer.parseInt(args[3]);
 		AlmacenSem alm = new AlmacenSem(N);
 		ArrayList<Thread> array = new ArrayList<>(P + C);
+		int numProductoHilo = numProductos / P;
+		int numDeSobra = numProductos % P;
 		for (int i = 0; i < P; i++) {
-			Thread t = new Productor(numProductos, alm);
+			Thread t;
+			if (i < numDeSobra)
+				t = new Productor(numProductoHilo + 1, alm);
+			else
+				t = new Productor(numProductoHilo, alm);
 			array.add(t);
 			t.start();
 		}
+		numProductoHilo = numProductos / C;
+		numDeSobra = numProductos % C;
 		for (int i = 0; i < C; i++) {
-			Thread t = new Consumidor(numProductos * P / C, alm);
+			Thread t;
+			if (i < numDeSobra)
+				t = new Consumidor(numProductoHilo + 1, alm);
+			else
+				t = new Consumidor(numProductoHilo, alm);
 			array.add(t);
 			t.start();
 		}
