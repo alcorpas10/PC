@@ -10,33 +10,27 @@ import static Utils.Constantes.MENSAJE_PREPARADO_SERVIDORCLIENTE;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
-import java.net.Socket;
-
 import Mensajes.Informacion;
 import Mensajes.Mensaje;
 
 public class OyenteServidor extends Thread {
-	//private Cliente c;
-	private Socket s;
 	private ObjectInputStream in;
 	private ObjectOutputStream out;
 
-    public OyenteServidor(/*Cliente c, */Socket s, ObjectInputStream in, ObjectOutputStream out) {
+    public OyenteServidor(ObjectInputStream in, ObjectOutputStream out) {
         super("OyenteServidor");
-        //this.c = c;
-        this.s = s;
-        this.in = in;
         this.out = out;
+        this.in = in;
     }
     
     public void run() {
-		try {
+		/*try {
 			in = new ObjectInputStream(s.getInputStream());
 			out = new ObjectOutputStream(s.getOutputStream());
 		} catch (IOException e1) {
 			// TODO Auto-generated catch block
 			e1.printStackTrace();
-		}
+		}*/
 		Mensaje m;
 		int tipo;
 		while (true) {

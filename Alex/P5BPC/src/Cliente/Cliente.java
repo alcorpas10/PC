@@ -39,8 +39,8 @@ public class Cliente {
 	private void init(String IPservidor, int puerto) {
 		try {
 			s = new Socket(IPservidor, puerto);
-	        //in = new ObjectInputStream(s.getInputStream());
-			//out = new ObjectOutputStream(s.getOutputStream());
+			out = new ObjectOutputStream(s.getOutputStream());
+	        in = new ObjectInputStream(s.getInputStream());
 	    	System.out.println("Usuario " + usuario + " conectandose al servidor " + IPservidor + "...");
 		} catch (UnknownHostException e) {
 			System.err.println("No pudo encontrarse un servidor en " + IPservidor);
@@ -52,7 +52,7 @@ public class Cliente {
 	        System.exit(1);
 		}
 		
-        new OyenteServidor(/*this, */s, in, out).start(); //join? Mirar parametro cliente
+        new OyenteServidor(in, out).start();
 
         while (true) {
         	menu();
@@ -60,13 +60,17 @@ public class Cliente {
 	}
 	
 	private int opcion() {
-		System.out.println("Opcion: ");
+		System.out.print("Opcion: ");
 		try {
 			String s = stdIn.readLine();
 			return Integer.parseInt(s);
 		} catch (Exception e) {
 			System.err.println("Opcion no valida. Introduzca un numero.");
-			e.printStackTrace();
+			try {
+				Thread.sleep(100);
+			} catch (InterruptedException e1) {
+				e1.printStackTrace();
+			}
 		}
 		return -1;
 	}
@@ -79,7 +83,10 @@ public class Cliente {
 
 		int n = 0;
 		n = opcion(); 
-		while (n < 0 || n > 2) n = opcion();
+		while (n < 0 || n > 2) {
+			System.err.println("Opcion no valida. Debe ser un numero ");
+			n = opcion();
+		}
 		switch (n) {
 		case 1:
 			listaUsuarios();

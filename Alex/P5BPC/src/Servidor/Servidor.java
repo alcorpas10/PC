@@ -10,8 +10,9 @@ import java.io.*;
 
 public class Servidor {
 	ServerSocket ss;
-	ArrayList<InfoUsuario> infoUsuarios; //Pasar a OyenteCliente o hacer getter
+	ArrayList<InfoUsuario> infoUsuarios;
 	ArrayList<Usuario> usuarios;
+	
 	
 	public Servidor(int puerto) {
 		try {
@@ -29,8 +30,11 @@ public class Servidor {
 		while (true) {
         	try {
         		Socket s = ss.accept();
+    			ObjectOutputStream out = new ObjectOutputStream(s.getOutputStream());
+    			ObjectInputStream in = new ObjectInputStream(s.getInputStream());
 	        	System.out.println("Nueva conexion creada");
-	            new OyenteCliente(this, s).start();
+	        	
+	            new OyenteCliente(this, in, out).start();
 			} catch (IOException e) {
 				System.err.println("No pudo aceptarse una solicitud de conexion");
 				e.printStackTrace();
