@@ -3,8 +3,6 @@ package Mensajes;
 import java.io.Serializable;
 import java.util.ArrayList;
 
-import Utils.InfoUsuario;
-
 public abstract class Mensaje implements Serializable {
 	/**
 	 * 
@@ -34,13 +32,11 @@ public abstract class Mensaje implements Serializable {
 		return destino;
 	}
 	
-	public abstract ArrayList<InfoUsuario> getLista();
+	public abstract ArrayList<String> getLista();
 	
 	public abstract String getId();
 	
 	public abstract String getNomArchivo();
-	
-	public abstract String getIP();
 	
 	public abstract int getPuerto();
 }

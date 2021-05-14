@@ -2,16 +2,14 @@ package Mensajes;
 
 import java.util.ArrayList;
 
-import Utils.InfoUsuario;
-
 public class Lista extends Mensaje {
 	/**
 	 * 
 	 */
 	private static final long serialVersionUID = 1L;
-	private ArrayList<InfoUsuario> lista;
+	private ArrayList<String> lista;
 	
-	public Lista(int tipo, String origen, String destino, ArrayList<InfoUsuario> lista) {
+	public Lista(int tipo, String origen, String destino, ArrayList<String> lista) {
 		super(tipo, origen, destino);
 		this.lista = lista;
 	}
@@ -21,7 +19,7 @@ public class Lista extends Mensaje {
 	}
 
 	@Override
-	public ArrayList<InfoUsuario> getLista() {
+	public ArrayList<String> getLista() {
 		return lista;
 	}
 
@@ -32,11 +30,6 @@ public class Lista extends Mensaje {
 
 	@Override
 	public String getNomArchivo() {
-		return null;
-	}
-
-	@Override
-	public String getIP() {
 		return null;
 	}
 

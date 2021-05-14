@@ -1,29 +1,34 @@
 package Mensajes;
 
-import static Utils.Constantes.ARCHIVO;
-
 import java.util.ArrayList;
 
-public class Archivo extends Mensaje {
+public class Conexion extends Mensaje {
 	/**
 	 * 
 	 */
 	private static final long serialVersionUID = 1L;
+	private String id;
+	private ArrayList<String> lista;
 
-	public Archivo(String origen, String destino) {
-		super(ARCHIVO, origen, destino);
+	public Conexion(int tipo, String id, String ip, ArrayList<String> lista) {
+		super(tipo, ip, "");
+		this.id = id;
+		this.lista = lista;
+	}
+	
+	public Conexion(int tipo, String id, String ip) {
+		super(tipo, ip, "");
+		this.id = id;
 	}
 
 	@Override
 	public ArrayList<String> getLista() {
-		// TODO Auto-generated method stub
-		return null;
+		return lista;
 	}
 
 	@Override
 	public String getId() {
-		// TODO Auto-generated method stub
-		return null;
+		return id;
 	}
 
 	@Override
@@ -37,4 +42,5 @@ public class Archivo extends Mensaje {
 		// TODO Auto-generated method stub
 		return 0;
 	}
+
 }

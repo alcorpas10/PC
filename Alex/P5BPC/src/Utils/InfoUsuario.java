@@ -13,6 +13,12 @@ public class InfoUsuario {
 		this.info = info;
 	}
 
+	public InfoUsuario(String id, String ip) {
+		this.id = id;
+		this.ip = ip;
+		this.info = null;
+	}
+
 	public String getId() {
 		return id;
 	}

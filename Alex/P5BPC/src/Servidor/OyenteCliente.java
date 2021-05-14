@@ -32,8 +32,8 @@ public class OyenteCliente extends Thread {
     public void run() {
 		Mensaje m;
 		int tipo;
-    	while (true) {
-    		try {
+		try {
+			while (true && in != null && out != null) {
 				m = (Mensaje) in.readObject();
 				tipo = m.getTipo();
 				switch (tipo) {
@@ -46,8 +46,12 @@ public class OyenteCliente extends Thread {
 		    			out.writeObject(new Informacion(MENSAJE_CONFIRMACION_LISTA_USUARIOS));
 						break;
 					case MENSAJE_CERRAR_CONEXION:
-						servidor.finSesion();
+						servidor.finSesion(m.getOrigen(), m.getId());
 		    			out.writeObject(new Informacion(MENSAJE_CONFIRMACION_CERRAR_CONEXION));
+		    			out.close();
+		    			in.close();
+		    			in = null;
+		    			out = null;
 						break;
 					case MENSAJE_PEDIR_FICHERO:
 						servidor.buscarFichero();
@@ -61,10 +65,10 @@ public class OyenteCliente extends Thread {
 						System.err.println("Mensaje recibido no valido");
 						break;
 				}
-			} catch (IOException | ClassNotFoundException e) {
-				System.err.println("Error al leer mensaje");
-				e.printStackTrace();
 			}
-    	}
+    	} catch (IOException | ClassNotFoundException e) {
+			System.err.println("Error al leer mensaje");
+			//TODO suponer que se ha desconectado servidor.finSesion();
+		}
     }
 }

@@ -2,9 +2,11 @@ package Cliente;
 
 import java.io.*;
 import java.net.*;
+import java.util.ArrayList;
 
+import Mensajes.Conexion;
 import Mensajes.Informacion;
-
+import static Utils.Constantes.MENSAJE_CONEXION;
 import static Utils.Constantes.MENSAJE_CERRAR_CONEXION;
 import static Utils.Constantes.MENSAJE_PEDIR_FICHERO;
 import static Utils.Constantes.MENSAJE_LISTA_USUARIOS;
@@ -13,6 +15,7 @@ public class Cliente {
 	private String usuario;
 	private String ip;
 	private Socket s;
+	private ArrayList<String> archivos;
 	private ObjectInputStream in;
 	private ObjectOutputStream out;
 	private BufferedReader stdIn;
@@ -28,20 +31,26 @@ public class Cliente {
 	        System.exit(1);
 		}
 		try {
-			ip = InetAddress.getLocalHost().toString();
+			ip = InetAddress.getLocalHost().getHostAddress();
 		} catch (UnknownHostException e) {
 			System.err.println("No pudo obtenerse la IP de la maquina");
 			e.printStackTrace();
 	        System.exit(1);
 		}
+		s = null;
+		archivos = new ArrayList<>();
+		in = null;
+		out = null;
 	}
 	
 	private void init(String IPservidor, int puerto) {
+		cargarArchivo();
 		try {
 			s = new Socket(IPservidor, puerto);
 			out = new ObjectOutputStream(s.getOutputStream());
 	        in = new ObjectInputStream(s.getInputStream());
 	    	System.out.println("Usuario " + usuario + " conectandose al servidor " + IPservidor + "...");
+			out.writeObject(new Conexion(MENSAJE_CONEXION, usuario, ip, archivos));
 		} catch (UnknownHostException e) {
 			System.err.println("No pudo encontrarse un servidor en " + IPservidor);
 			e.printStackTrace();
@@ -54,6 +63,10 @@ public class Cliente {
 		
         new OyenteServidor(in, out).start();
 
+        try {
+			Thread.sleep(500);
+		} catch (InterruptedException e1) {}
+        
         while (true) {
         	menu();
         }
@@ -68,9 +81,7 @@ public class Cliente {
 			System.err.println("Opcion no valida. Introduzca un numero.");
 			try {
 				Thread.sleep(100);
-			} catch (InterruptedException e1) {
-				e1.printStackTrace();
-			}
+			} catch (InterruptedException e1) {}
 		}
 		return -1;
 	}
@@ -103,10 +114,29 @@ public class Cliente {
 		}
 	}
 	
+	private void cargarArchivo() {
+		try {
+			InputStream inputStream = new FileInputStream("files.txt");
+			BufferedReader br = new BufferedReader(new InputStreamReader(inputStream));
+			
+			String linea = br.readLine();
+			for (String a : linea.split(";"))
+				archivos.add(a);
+			br.close();
+        	System.out.println("Lista de archivos cargada correctamente");
+		} catch(Exception e) {
+			System.err.println("Archivo files.txt no existente.");
+			e.printStackTrace();
+		}
+	}
+	
 	private void cerrarSesion() {
 		try {
-			out.writeObject(new Informacion(MENSAJE_CERRAR_CONEXION));
 			System.out.println("Desconectando del servidor...");
+			out.writeObject(new Conexion(MENSAJE_CERRAR_CONEXION, usuario, ip));
+			try {
+				Thread.sleep(500);
+			} catch (InterruptedException e1) {}
 		} catch (IOException e) {
 			System.err.println("No se pudo enviar la solicitud de cierre de sesion");
 			e.printStackTrace();
