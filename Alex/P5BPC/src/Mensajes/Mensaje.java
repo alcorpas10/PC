@@ -36,7 +36,7 @@ public abstract class Mensaje implements Serializable {
 	
 	public abstract String getId();
 	
-	public abstract String getNomArchivo();
+	public abstract String getString();
 	
 	public abstract int getPuerto();
 }

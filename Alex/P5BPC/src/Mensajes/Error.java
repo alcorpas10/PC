@@ -2,25 +2,23 @@ package Mensajes;
 
 import java.util.ArrayList;
 
-public class Lista extends Mensaje {
+import static Utils.Constantes.ERROR;
+
+public class Error extends Mensaje {
 	/**
 	 * 
 	 */
 	private static final long serialVersionUID = 1L;
-	private ArrayList<String> lista;
-	
-	public Lista(int tipo, String origen, String destino, ArrayList<String> lista) {
-		super(tipo, origen, destino);
-		this.lista = lista;
-	}
-	
-	public Lista(int tipo) {
-		super(tipo, "", "");
+	private String error;
+
+	public Error(String error) {
+		super(ERROR, "", "");
+		this.error = error;
 	}
 
 	@Override
 	public ArrayList<String> getLista() {
-		return lista;
+		return null;
 	}
 
 	@Override
@@ -35,6 +33,7 @@ public class Lista extends Mensaje {
 
 	@Override
 	public String getString() {
-		return null;
+		return error;
 	}
+
 }

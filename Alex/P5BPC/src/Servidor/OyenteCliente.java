@@ -1,7 +1,10 @@
 package Servidor;
 
+import Mensajes.Archivo;
 import Mensajes.Informacion;
 import Mensajes.Mensaje;
+import Mensajes.Error;
+import Utils.Usuario;
 
 import java.io.*;
 
@@ -15,6 +18,7 @@ import static Utils.Constantes.MENSAJE_PEDIR_FICHERO;
 import static Utils.Constantes.MENSAJE_EMITIR_FICHERO;
 import static Utils.Constantes.MENSAJE_PREPARADO_CLIENTESERVIDOR;
 import static Utils.Constantes.MENSAJE_PREPARADO_SERVIDORCLIENTE;
+import static Utils.Constantes.MENSAJE_FINAL_DESCARGA;
 
 
 public class OyenteCliente extends Thread {
@@ -38,15 +42,15 @@ public class OyenteCliente extends Thread {
 				tipo = m.getTipo();
 				switch (tipo) {
 					case MENSAJE_CONEXION:
-						servidor.guardarInfo();
+						servidor.guardarUsuario(m.getId(), m.getOrigen(), m.getLista(), in, out);
 		    			out.writeObject(new Informacion(MENSAJE_CONFIRMACION_CONEXION));
 						break;
 					case MENSAJE_LISTA_USUARIOS:
-						servidor.listaUsuarios();
 		    			out.writeObject(new Informacion(MENSAJE_CONFIRMACION_LISTA_USUARIOS));
+						servidor.listaUsuarios(in, out);
 						break;
 					case MENSAJE_CERRAR_CONEXION:
-						servidor.finSesion(m.getOrigen(), m.getId());
+						servidor.finSesion(m.getId(), m.getOrigen());
 		    			out.writeObject(new Informacion(MENSAJE_CONFIRMACION_CERRAR_CONEXION));
 		    			out.close();
 		    			in.close();
@@ -54,12 +58,22 @@ public class OyenteCliente extends Thread {
 		    			out = null;
 						break;
 					case MENSAJE_PEDIR_FICHERO:
-						servidor.buscarFichero();
-		    			out.writeObject(new Informacion(MENSAJE_EMITIR_FICHERO));
+						String nomArchivo = m.getString();
+						Usuario usuario1 = servidor.buscarFichero(nomArchivo);
+						if (usuario1 != null)
+							usuario1.getOut().writeObject(new Archivo(MENSAJE_EMITIR_FICHERO, m.getOrigen(), m.getId(), nomArchivo));
+						else 
+							out.writeObject(new Error("No hay ningun usuario con ese archivo conectado actualmente :("));
 						break;
 					case MENSAJE_PREPARADO_CLIENTESERVIDOR:
-						servidor.buscarUsuario();
-		    			out.writeObject(new Informacion(MENSAJE_PREPARADO_SERVIDORCLIENTE));
+						Usuario usuario2 = servidor.buscarUsuario(m.getId(), m.getDestino());
+						if (usuario2 != null)
+							usuario2.getOut().writeObject(new Archivo(MENSAJE_PREPARADO_SERVIDORCLIENTE, m.getOrigen(), m.getDestino(), m.getId(), m.getPuerto(), m.getString()));
+						else 
+							out.writeObject(new Error("El usuario que habia pedido el archivo se ha desconectado :("));
+						break;
+					case MENSAJE_FINAL_DESCARGA:
+						servidor.descargaTerminada(m.getId(), m.getOrigen(), m.getString());
 						break;
 					default:
 						System.err.println("Mensaje recibido no valido");
@@ -68,7 +82,6 @@ public class OyenteCliente extends Thread {
 			}
     	} catch (IOException | ClassNotFoundException e) {
 			System.err.println("Error al leer mensaje");
-			//TODO suponer que se ha desconectado servidor.finSesion();
 		}
     }
 }

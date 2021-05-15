@@ -1,19 +1,50 @@
 package Cliente;
 
+import static Utils.Constantes.MENSAJE_CONEXION;
+import static Utils.Constantes.MENSAJE_CONFIRMACION_CONEXION;
+import static Utils.Constantes.MENSAJE_LINEA_ENVIADA;
+import static Utils.Constantes.MENSAJE_LINEA_RECIBIDA;
+import static Utils.Constantes.MENSAJE_FINAL_SECUENCIA;
+import static Utils.Constantes.MENSAJE_CONFIRMACION_FINAL_SECUENCIA;
+
 import java.io.IOException;
 import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
+import java.io.PrintWriter;
 import java.net.Socket;
 import java.net.UnknownHostException;
 
+import Mensajes.Conexion;
+import Mensajes.Informacion;
+import Mensajes.Mensaje;
+
 public class Receptor extends Thread {
-	Socket s;
-	ObjectInputStream in;
+	private Cliente c;
+	private Socket s;
+	private ObjectInputStream in;
+	private ObjectOutputStream out;
+	private String ip;
+	private int puerto;
+	private String nomArchivo;
 	
-	public Receptor(String ip, int puerto) {
+	public Receptor(Cliente c, String ip, int puerto, String nomArchivo) {
+        super("Receptor");
+		this.c = c;
+		this.s = null;
+		this.in = null;
+		this.out = null;
+		this.ip = ip;
+		this.puerto = puerto;
+		this.nomArchivo = nomArchivo;
+	}
+	
+	@Override
+	public void run() {
 		try {
 			s = new Socket(ip, puerto);
+			out = new ObjectOutputStream(s.getOutputStream());
 			in = new ObjectInputStream(s.getInputStream());
-	    	System.out.println("Cliente iniciando conexion P2P...");
+	    	System.out.println("Cliente iniciando descarga P2P...");
 		} catch (UnknownHostException e) {
 			System.err.println("No pudo encontrarse un servidor abierto en " + ip);
 			e.printStackTrace();
@@ -23,11 +54,32 @@ public class Receptor extends Thread {
 			e.printStackTrace();
 	        System.exit(1);
 		}
-	}
-	
-	@Override
-	public void run() {
-		// TODO Auto-generated method stub
-		super.run();
+		Mensaje m;
+		try {
+			m = (Mensaje) in.readObject();
+			if (m.getTipo() == MENSAJE_CONEXION) {
+				out.writeObject(new Conexion(MENSAJE_CONFIRMACION_CONEXION));
+				PrintWriter pw = new PrintWriter(nomArchivo);
+				m = (Mensaje) in.readObject();
+				while (m.getTipo() == MENSAJE_LINEA_ENVIADA) {
+					pw.println(m.getString());
+	    			out.writeObject(new Informacion(MENSAJE_LINEA_RECIBIDA));
+	    			m = (Mensaje) in.readObject();
+				}
+				pw.flush();
+				pw.close();
+				if (m.getTipo() == MENSAJE_FINAL_SECUENCIA) {
+	    			out.writeObject(new Informacion(MENSAJE_CONFIRMACION_FINAL_SECUENCIA));
+					System.out.println("\nDescarga finalizada correctamente");
+				}
+				else
+					System.err.println("\nDescarga finalizada incorrectamente");
+			}
+			else
+				System.err.println("\nDescarga finalizada incorrectamente");
+			c.descargaTerminada(nomArchivo);
+		} catch (ClassNotFoundException | IOException e) {
+			e.printStackTrace();
+		}
 	}
 }

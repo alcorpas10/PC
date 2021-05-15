@@ -28,12 +28,12 @@ public class Informacion extends Mensaje {
 	}
 
 	@Override
-	public String getNomArchivo() {
-		return null;
+	public int getPuerto() {
+		return 0;
 	}
 
 	@Override
-	public int getPuerto() {
-		return 0;
+	public String getString() {
+		return null;
 	}
 }

@@ -1,20 +1,19 @@
 package Utils;
 
-public class Pair<T,P> {
+public class Pair<T1, T2> {
+	private T1 _first;
+	private T2 _second;
 
-	private T first;
-	private P second;
-	
-	public Pair(T first, P second) {
-		this.first = first;
-		this.second = second;
+	public Pair(T1 first, T2 second) {
+		_first = first;
+		_second = second;
 	}
 
-	public T getFirst() {
-		return first;
+	public T1 getFirst() {
+		return _first;
 	}
 
-	public P getSecond() {
-		return second;
+	public T2 getSecond() {
+		return _second;
 	}
 }

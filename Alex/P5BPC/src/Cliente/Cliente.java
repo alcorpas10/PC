@@ -4,15 +4,18 @@ import java.io.*;
 import java.net.*;
 import java.util.ArrayList;
 
+import Mensajes.Archivo;
 import Mensajes.Conexion;
 import Mensajes.Informacion;
+
 import static Utils.Constantes.MENSAJE_CONEXION;
 import static Utils.Constantes.MENSAJE_CERRAR_CONEXION;
 import static Utils.Constantes.MENSAJE_PEDIR_FICHERO;
 import static Utils.Constantes.MENSAJE_LISTA_USUARIOS;
+import static Utils.Constantes.MENSAJE_FINAL_DESCARGA;
 
 public class Cliente {
-	private String usuario;
+	private String id;
 	private String ip;
 	private Socket s;
 	private ArrayList<String> archivos;
@@ -24,19 +27,13 @@ public class Cliente {
 		stdIn = new BufferedReader(new InputStreamReader(System.in));
 		try {
 	    	System.out.print("Introduzca su nombre de usuario: ");
-			usuario = stdIn.readLine();
+			id = stdIn.readLine();
 		} catch (IOException e) {
 			System.err.println("Error al leer nombre de usuario");
 			e.printStackTrace();
 	        System.exit(1);
 		}
-		try {
-			ip = InetAddress.getLocalHost().getHostAddress();
-		} catch (UnknownHostException e) {
-			System.err.println("No pudo obtenerse la IP de la maquina");
-			e.printStackTrace();
-	        System.exit(1);
-		}
+		ip = getIP();//InetAddress.getLocalHost().getHostAddress();
 		s = null;
 		archivos = new ArrayList<>();
 		in = null;
@@ -49,8 +46,8 @@ public class Cliente {
 			s = new Socket(IPservidor, puerto);
 			out = new ObjectOutputStream(s.getOutputStream());
 	        in = new ObjectInputStream(s.getInputStream());
-	    	System.out.println("Usuario " + usuario + " conectandose al servidor " + IPservidor + "...");
-			out.writeObject(new Conexion(MENSAJE_CONEXION, usuario, ip, archivos));
+	    	System.out.println("Usuario " + id + " conectandose al servidor " + IPservidor + "...");
+			out.writeObject(new Conexion(MENSAJE_CONEXION, id, ip, archivos));
 		} catch (UnknownHostException e) {
 			System.err.println("No pudo encontrarse un servidor en " + IPservidor);
 			e.printStackTrace();
@@ -61,32 +58,41 @@ public class Cliente {
 	        System.exit(1);
 		}
 		
-        new OyenteServidor(in, out).start();
-
-        try {
-			Thread.sleep(500);
-		} catch (InterruptedException e1) {}
+        new OyenteServidor(this, ip, in, out).start();
         
-        while (true) {
+        while (true) { //TODO mirar cuando se cierra el servidor
         	menu();
         }
 	}
+	
+	private String getIP() {
+        BufferedReader in = null;
+        try {
+    		URL whatismyip = new URL("http://checkip.amazonaws.com");
+            in = new BufferedReader(new InputStreamReader(whatismyip.openStream()));
+            String ip = in.readLine();
+            in.close();
+            return ip;
+        } catch (IOException e) {
+			e.printStackTrace();
+		}
+        return "";
+    }
 	
 	private int opcion() {
 		System.out.print("Opcion: ");
 		try {
 			String s = stdIn.readLine();
 			return Integer.parseInt(s);
-		} catch (Exception e) {
-			System.err.println("Opcion no valida. Introduzca un numero.");
-			try {
-				Thread.sleep(100);
-			} catch (InterruptedException e1) {}
-		}
+		} catch (Exception e) {}
 		return -1;
 	}
 	
 	private void menu() {
+		try {
+			Thread.sleep(500);
+		} catch (InterruptedException e1) {}
+		
 		System.out.println("Seleccione la opcion que desee ejecutar:");
 		System.out.println("1.- Consultar informacion sobre los usuarios conectados.");
 		System.out.println("2.- Descargar archivo.");
@@ -133,7 +139,7 @@ public class Cliente {
 	private void cerrarSesion() {
 		try {
 			System.out.println("Desconectando del servidor...");
-			out.writeObject(new Conexion(MENSAJE_CERRAR_CONEXION, usuario, ip));
+			out.writeObject(new Conexion(MENSAJE_CERRAR_CONEXION, id, ip));
 			try {
 				Thread.sleep(500);
 			} catch (InterruptedException e1) {}
@@ -145,18 +151,29 @@ public class Cliente {
 
 	private void descargarArchivo() {
 		try {
-			out.writeObject(new Informacion(MENSAJE_PEDIR_FICHERO, ip));
+			System.out.print("¿Que archivo desea descargar?: ");
+			String nomArchivo = stdIn.readLine();
+			out.writeObject(new Archivo(MENSAJE_PEDIR_FICHERO, ip, id, nomArchivo));
+			System.out.println("Iniciando conexion para descarga...");
 		} catch (IOException e) {
-			System.err.println("No se pudo enviar la solicitud de descarga");
+			System.err.println("Error al procesar la solicitud de descarga");
 			e.printStackTrace();
 		}
 	}
 
-	private void listaUsuarios() {
+	public void listaUsuarios() {
 		try {
 			out.writeObject(new Informacion(MENSAJE_LISTA_USUARIOS));
 		} catch (IOException e) {
 			System.err.println("No se pudo enviar la solicitud de informacion");
+			e.printStackTrace();
+		}
+	}
+	
+	public void descargaTerminada(String nomArchivo) {
+		try {
+			out.writeObject(new Archivo(MENSAJE_FINAL_DESCARGA, ip, id, nomArchivo));
+		} catch (IOException e) {
 			e.printStackTrace();
 		}
 	}

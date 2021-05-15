@@ -20,6 +20,10 @@ public class Conexion extends Mensaje {
 		super(tipo, ip, "");
 		this.id = id;
 	}
+	
+	public Conexion(int tipo) {
+		super(tipo, "", "");
+	}
 
 	@Override
 	public ArrayList<String> getLista() {
@@ -32,15 +36,13 @@ public class Conexion extends Mensaje {
 	}
 
 	@Override
-	public String getNomArchivo() {
-		// TODO Auto-generated method stub
-		return null;
+	public int getPuerto() {
+		return 0;
 	}
 
 	@Override
-	public int getPuerto() {
-		// TODO Auto-generated method stub
-		return 0;
+	public String getString() {
+		return null;
 	}
 
 }

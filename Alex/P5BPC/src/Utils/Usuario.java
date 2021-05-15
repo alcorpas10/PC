@@ -12,9 +12,19 @@ public class Usuario {
 	boolean descargando;
 	
 	public Usuario(String id, String ip, ObjectInputStream in, ObjectOutputStream out) {
+		this.id = id;
+		this.ip = ip;
 		this.in = in;
 		this.out = out;
 		this.descargando = false;
+	}
+	
+	public String getId() {
+		return id;
+	}
+	
+	public String getIp() {
+		return ip;
 	}
 	
 	public ObjectInputStream getIn() {

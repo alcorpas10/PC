@@ -2,25 +2,38 @@ package Cliente;
 
 import static Utils.Constantes.MENSAJE_CONFIRMACION_CERRAR_CONEXION;
 import static Utils.Constantes.MENSAJE_CONFIRMACION_CONEXION;
+import static Utils.Constantes.MENSAJE_CONFIRMACION_FINAL_SECUENCIA;
 import static Utils.Constantes.MENSAJE_CONFIRMACION_LISTA_USUARIOS;
 import static Utils.Constantes.MENSAJE_EMITIR_FICHERO;
+import static Utils.Constantes.MENSAJE_FINAL_SECUENCIA;
+import static Utils.Constantes.MENSAJE_LINEA_ENVIADA;
+import static Utils.Constantes.MENSAJE_LINEA_RECIBIDA;
 import static Utils.Constantes.MENSAJE_PREPARADO_CLIENTESERVIDOR;
 import static Utils.Constantes.MENSAJE_PREPARADO_SERVIDORCLIENTE;
+import static Utils.Constantes.ERROR;
 
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+
+import Mensajes.Archivo;
 import Mensajes.Informacion;
 import Mensajes.Mensaje;
 
 public class OyenteServidor extends Thread {
+	private Cliente c;
 	private ObjectInputStream in;
 	private ObjectOutputStream out;
+	private String ip;
+	private int puertoCont;
 
-    public OyenteServidor(ObjectInputStream in, ObjectOutputStream out) {
+    public OyenteServidor(Cliente c, String ip, ObjectInputStream in, ObjectOutputStream out) {
         super("OyenteServidor");
+        this.c = c;
+        this.ip = ip;
         this.out = out;
         this.in = in;
+        this.puertoCont = 1234;
     }
     
     public void run() {
@@ -39,7 +52,23 @@ public class OyenteServidor extends Thread {
 								+ "`----' `-'`----'`-' `-' `---' `----'`-' `-'`-'`----'  `----' ");
 						break;
 					case MENSAJE_CONFIRMACION_LISTA_USUARIOS:
-						System.out.println(m.getLista());
+						Mensaje nuevoM;
+						try {
+							nuevoM = (Mensaje) in.readObject();
+							while (nuevoM.getTipo() == MENSAJE_LINEA_ENVIADA) {
+								System.out.println(m.getString());
+				    			out.writeObject(new Informacion(MENSAJE_LINEA_RECIBIDA));
+				    			m = (Mensaje) in.readObject();
+							}
+							if (m.getTipo() == MENSAJE_FINAL_SECUENCIA) {
+				    			out.writeObject(new Informacion(MENSAJE_CONFIRMACION_FINAL_SECUENCIA));
+								System.out.println("Fin de la lista");
+							}
+							else
+								System.err.println("Descarga finalizada incorrectamente");
+						} catch (ClassNotFoundException | IOException e) {
+							e.printStackTrace();
+						}
 						break;
 					case MENSAJE_CONFIRMACION_CERRAR_CONEXION:
 						System.out.println("Desconexion realizada correctamente\n"
@@ -51,12 +80,16 @@ public class OyenteServidor extends Thread {
 						System.exit(0);
 						break;
 					case MENSAJE_EMITIR_FICHERO:
-						String archivo = m.getNomArchivo();
-		    			out.writeObject(new Informacion(MENSAJE_PREPARADO_CLIENTESERVIDOR, m.getId()));
-		    			new Emisor(m.getPuerto(), archivo).run();
+						String nomArchivo = m.getString();
+		    			out.writeObject(new Archivo(MENSAJE_PREPARADO_CLIENTESERVIDOR, ip, m.getOrigen(), m.getId(), puertoCont, nomArchivo));
+		    			new Emisor(puertoCont, nomArchivo).start();
+		    			puertoCont++;
 						break;
 					case MENSAJE_PREPARADO_SERVIDORCLIENTE:
-						new Receptor(m.getOrigen(), m.getPuerto()).run();
+						new Receptor(c, m.getOrigen(), m.getPuerto(), m.getString()).start();
+						break;
+					case ERROR:
+						System.err.println(m.getString());
 						break;
 					default:
 						System.err.println("Mensaje recibido no valido");
@@ -65,7 +98,6 @@ public class OyenteServidor extends Thread {
 			}
 		} catch (IOException | ClassNotFoundException e) {
 			System.err.println("Error al leer mensaje");
-			e.printStackTrace();
 		}
     }
 }
