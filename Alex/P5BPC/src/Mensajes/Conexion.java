@@ -36,7 +36,7 @@ public class Conexion extends Mensaje {
 	}
 
 	@Override
-	public int getPuerto() {
+	public int getNumero() {
 		return 0;
 	}
 

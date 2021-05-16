@@ -2,6 +2,7 @@ package Servidor;
 
 import Mensajes.Archivo;
 import Mensajes.Informacion;
+import Mensajes.Lista;
 import Mensajes.Mensaje;
 import Mensajes.Error;
 import Utils.Usuario;
@@ -19,6 +20,10 @@ import static Utils.Constantes.MENSAJE_EMITIR_FICHERO;
 import static Utils.Constantes.MENSAJE_PREPARADO_CLIENTESERVIDOR;
 import static Utils.Constantes.MENSAJE_PREPARADO_SERVIDORCLIENTE;
 import static Utils.Constantes.MENSAJE_FINAL_DESCARGA;
+import static Utils.Constantes.MENSAJE_LINEA_RECIBIDA;
+import static Utils.Constantes.MENSAJE_LINEA_ENVIADA;
+import static Utils.Constantes.MENSAJE_FINAL_SECUENCIA;
+import static Utils.Constantes.MENSAJE_CONFIRMACION_FINAL_SECUENCIA;
 
 
 public class OyenteCliente extends Thread {
@@ -36,6 +41,7 @@ public class OyenteCliente extends Thread {
     public void run() {
 		Mensaje m;
 		int tipo;
+		String s = "";
 		try {
 			while (true && in != null && out != null) {
 				m = (Mensaje) in.readObject();
@@ -47,7 +53,21 @@ public class OyenteCliente extends Thread {
 						break;
 					case MENSAJE_LISTA_USUARIOS:
 		    			out.writeObject(new Informacion(MENSAJE_CONFIRMACION_LISTA_USUARIOS));
-						servidor.listaUsuarios(in, out);
+						s = servidor.listaUsuarios(0);
+						if (s.equals(""))
+							out.writeObject(new Informacion(MENSAJE_FINAL_SECUENCIA));
+						else
+							out.writeObject(new Lista(MENSAJE_LINEA_ENVIADA, 0, s));
+						break;
+					case MENSAJE_LINEA_RECIBIDA:
+						s = servidor.listaUsuarios(m.getNumero()+1);
+						if (s.equals(""))
+							out.writeObject(new Informacion(MENSAJE_FINAL_SECUENCIA));
+						else
+							out.writeObject(new Lista(MENSAJE_LINEA_ENVIADA, m.getNumero()+1, s));
+						break;
+					case MENSAJE_CONFIRMACION_FINAL_SECUENCIA:
+						System.out.println("Lista enviada exitosamente");
 						break;
 					case MENSAJE_CERRAR_CONEXION:
 						servidor.finSesion(m.getId(), m.getOrigen());
@@ -59,16 +79,16 @@ public class OyenteCliente extends Thread {
 						break;
 					case MENSAJE_PEDIR_FICHERO:
 						String nomArchivo = m.getString();
-						Usuario usuario1 = servidor.buscarFichero(nomArchivo);
+						Usuario usuario1 = servidor.buscarFichero(m.getId(), m.getOrigen(), nomArchivo);
 						if (usuario1 != null)
 							usuario1.getOut().writeObject(new Archivo(MENSAJE_EMITIR_FICHERO, m.getOrigen(), m.getId(), nomArchivo));
 						else 
-							out.writeObject(new Error("No hay ningun usuario con ese archivo conectado actualmente :("));
+							out.writeObject(new Error("No hay ningun usuario con ese archivo conectado actualmente :(\n"));
 						break;
 					case MENSAJE_PREPARADO_CLIENTESERVIDOR:
 						Usuario usuario2 = servidor.buscarUsuario(m.getId(), m.getDestino());
 						if (usuario2 != null)
-							usuario2.getOut().writeObject(new Archivo(MENSAJE_PREPARADO_SERVIDORCLIENTE, m.getOrigen(), m.getDestino(), m.getId(), m.getPuerto(), m.getString()));
+							usuario2.getOut().writeObject(new Archivo(MENSAJE_PREPARADO_SERVIDORCLIENTE, m.getOrigen(), m.getDestino(), m.getId(), m.getNumero(), m.getString()));
 						else 
 							out.writeObject(new Error("El usuario que habia pedido el archivo se ha desconectado :("));
 						break;

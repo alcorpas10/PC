@@ -7,20 +7,23 @@ public class Lista extends Mensaje {
 	 * 
 	 */
 	private static final long serialVersionUID = 1L;
+	private String fila;
+	private int numFila;
 	private ArrayList<String> lista;
 	
 	public Lista(int tipo, String origen, String destino, ArrayList<String> lista) {
 		super(tipo, origen, destino);
 		this.lista = lista;
 	}
-	
-	public Lista(int tipo) {
+	public Lista(int tipo, int  num, String fila) {
 		super(tipo, "", "");
+		this.fila = fila;
+		this.numFila = num;
 	}
-
-	@Override
-	public ArrayList<String> getLista() {
-		return lista;
+	
+	public Lista(int tipo, int  num) {
+		super(tipo, "", "");
+		this.numFila = num;
 	}
 
 	@Override
@@ -29,12 +32,17 @@ public class Lista extends Mensaje {
 	}
 
 	@Override
-	public int getPuerto() {
-		return 0;
+	public int getNumero() {
+		return numFila;
 	}
 
 	@Override
 	public String getString() {
-		return null;
+		return fila;
+	}
+	
+	@Override
+	public ArrayList<String> getLista() {
+		return lista;
 	}
 }

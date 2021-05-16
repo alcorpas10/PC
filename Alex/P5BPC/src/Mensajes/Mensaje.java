@@ -38,5 +38,5 @@ public abstract class Mensaje implements Serializable {
 	
 	public abstract String getString();
 	
-	public abstract int getPuerto();
+	public abstract int getNumero();
 }

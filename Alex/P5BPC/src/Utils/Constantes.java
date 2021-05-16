@@ -16,5 +16,5 @@ public final class Constantes {
 	public static final int MENSAJE_LINEA_RECIBIDA = 9;
 	public static final int MENSAJE_FINAL_SECUENCIA = 10;
 	public static final int MENSAJE_CONFIRMACION_FINAL_SECUENCIA = 11;
-	public static final int MENSAJE_FINAL_DESCARGA = 11;
+	public static final int MENSAJE_FINAL_DESCARGA = 12;
 }

@@ -51,7 +51,7 @@ public class Archivo extends Mensaje {
 	}
 
 	@Override
-	public int getPuerto() {
+	public int getNumero() {
 		return puerto;
 	}
 }

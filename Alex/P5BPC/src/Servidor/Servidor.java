@@ -24,7 +24,7 @@ public class Servidor {
 	//ArrayList<InfoUsuario> infoUsuarios;
 	HashMap<String, ArrayList<String>> mapaInfoUsuarios;
 	HashMap<String, ArrayList<Pair<String, String>>> mapaArchivos;
-	HashMap<String, Usuario> mapaUsuarios;	
+	HashMap<String, Usuario> mapaUsuarios;
 	
 	public Servidor(int puerto) {
 		mapaInfoUsuarios = new HashMap<>();
@@ -153,13 +153,25 @@ public class Servidor {
 		}
 	}
 	
-	public Usuario buscarFichero(String nomArchivo) {
+	public String listaUsuarios(int i) {
+		if (i < mapaUsuarios.size()) {
+			Entry<String, Usuario> usuario = new ArrayList<Entry<String, Usuario>>(mapaUsuarios.entrySet()).get(i);
+			return usuario.getKey() + ": " + mapaInfoUsuarios.get(usuario.getKey()).toString() + "\n";
+		}
+		else
+			return "";
+	}
+	
+	public Usuario buscarFichero(String nomArchivo, String id, String ip) {
 		if (mapaArchivos.containsKey(nomArchivo)) {
+			String key = id + "," + ip;
 			ArrayList<Pair<String, String>> lista = mapaArchivos.get(nomArchivo);
 			for (Pair<String, String> par : lista) {
 				String s = par.getFirst() + "," + par.getSecond();
-				if (mapaUsuarios.containsKey(s))
-					return mapaUsuarios.get(s);
+				if (!key.equals(s)) {
+					if (mapaUsuarios.containsKey(s))
+						return mapaUsuarios.get(s);
+				}
 			}
 			return null;
 		}
@@ -183,6 +195,7 @@ public class Servidor {
 	
 	public void finSesion(String id, String ip) {
     	System.out.println("Cliente desconectandose del servidor...");
+    	
 		guardarArchivo();
 		String par = id + "," + ip;
 		if (mapaUsuarios.containsKey(par))

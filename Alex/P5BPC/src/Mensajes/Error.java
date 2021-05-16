@@ -27,7 +27,7 @@ public class Error extends Mensaje {
 	}
 
 	@Override
-	public int getPuerto() {
+	public int getNumero() {
 		return 0;
 	}
 

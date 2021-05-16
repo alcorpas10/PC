@@ -18,6 +18,7 @@ import java.io.ObjectOutputStream;
 
 import Mensajes.Archivo;
 import Mensajes.Informacion;
+import Mensajes.Lista;
 import Mensajes.Mensaje;
 
 public class OyenteServidor extends Thread {
@@ -39,6 +40,7 @@ public class OyenteServidor extends Thread {
     public void run() {
 		Mensaje m;
 		int tipo;
+		String lista = "";
 		try {
 			while (true) {
 				m = (Mensaje) in.readObject();
@@ -55,20 +57,27 @@ public class OyenteServidor extends Thread {
 						Mensaje nuevoM;
 						try {
 							nuevoM = (Mensaje) in.readObject();
-							while (nuevoM.getTipo() == MENSAJE_LINEA_ENVIADA) {
-								System.out.println(m.getString());
-				    			out.writeObject(new Informacion(MENSAJE_LINEA_RECIBIDA));
-				    			m = (Mensaje) in.readObject();
+							if (nuevoM.getTipo() == MENSAJE_LINEA_ENVIADA) {
+								lista += nuevoM.getString();
+				    			out.writeObject(new Lista(MENSAJE_LINEA_RECIBIDA, nuevoM.getNumero()));
 							}
-							if (m.getTipo() == MENSAJE_FINAL_SECUENCIA) {
-				    			out.writeObject(new Informacion(MENSAJE_CONFIRMACION_FINAL_SECUENCIA));
-								System.out.println("Fin de la lista");
+							else {
+								out.writeObject(new Informacion(MENSAJE_CONFIRMACION_FINAL_SECUENCIA));
+								System.out.println(lista);
+								lista = "";
 							}
-							else
-								System.err.println("Descarga finalizada incorrectamente");
 						} catch (ClassNotFoundException | IOException e) {
 							e.printStackTrace();
 						}
+						break;
+					case MENSAJE_LINEA_ENVIADA:
+						lista += m.getString();
+		    			out.writeObject(new Lista(MENSAJE_LINEA_RECIBIDA, m.getNumero()));
+		    			break;
+					case MENSAJE_FINAL_SECUENCIA:
+						out.writeObject(new Informacion(MENSAJE_CONFIRMACION_FINAL_SECUENCIA));
+						System.out.println(lista);
+						lista = "";
 						break;
 					case MENSAJE_CONFIRMACION_CERRAR_CONEXION:
 						System.out.println("Desconexion realizada correctamente\n"
@@ -86,7 +95,7 @@ public class OyenteServidor extends Thread {
 		    			puertoCont++;
 						break;
 					case MENSAJE_PREPARADO_SERVIDORCLIENTE:
-						new Receptor(c, m.getOrigen(), m.getPuerto(), m.getString()).start();
+						new Receptor(c, m.getOrigen(), m.getNumero(), m.getString()).start();
 						break;
 					case ERROR:
 						System.err.println(m.getString());

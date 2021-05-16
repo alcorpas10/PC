@@ -28,7 +28,7 @@ public class Informacion extends Mensaje {
 	}
 
 	@Override
-	public int getPuerto() {
+	public int getNumero() {
 		return 0;
 	}
 
