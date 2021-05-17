@@ -71,13 +71,13 @@ public class Receptor extends Thread {
 				if (m.getTipo() == MENSAJE_FINAL_SECUENCIA) {
 	    			out.writeObject(new Informacion(MENSAJE_CONFIRMACION_FINAL_SECUENCIA));
 					System.out.println("\nDescarga finalizada correctamente");
+					c.descargaTerminada(nomArchivo);
 				}
 				else
 					System.err.println("\nDescarga finalizada incorrectamente");
 			}
 			else
 				System.err.println("\nDescarga finalizada incorrectamente");
-			c.descargaTerminada(nomArchivo);
 		} catch (ClassNotFoundException | IOException e) {
 			e.printStackTrace();
 		}

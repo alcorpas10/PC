@@ -30,4 +30,13 @@ public class InfoUsuario {
 	public ArrayList<String> getInfo() {
 		return info;
 	}
+	
+	public void setInfo(ArrayList<String> info) {
+		this.info = info;
+	}
+
+	@Override
+	public String toString() {
+		return "Usuario " + id + ", con ip = " + ip + ", archivos = " + info;
+	}
 }

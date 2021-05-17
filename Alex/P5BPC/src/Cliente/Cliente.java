@@ -3,7 +3,6 @@ package Cliente;
 import java.io.*;
 import java.net.*;
 import java.util.ArrayList;
-
 import Mensajes.Archivo;
 import Mensajes.Conexion;
 import Mensajes.Informacion;
@@ -136,6 +135,25 @@ public class Cliente {
 		}
 	}
 	
+	private void guardarArchivo() {
+		try {
+			OutputStream outputStream = new FileOutputStream("files.txt");
+			BufferedWriter br = new BufferedWriter(new OutputStreamWriter(outputStream));
+			
+			for (String s : archivos) {
+				br.append(s);
+				br.append(';');
+			}
+			br.close();
+			outputStream.flush();
+			outputStream.close();
+        	System.out.println("Base de datos guardada correctamente");
+		} catch(Exception e) {
+			System.err.println("Error al guardar en files.txt.");
+			e.printStackTrace();
+		}
+	}
+	
 	private void cerrarSesion() {
 		try {
 			System.out.println("Desconectando del servidor...");
@@ -172,6 +190,8 @@ public class Cliente {
 	
 	public void descargaTerminada(String nomArchivo) {
 		try {
+			archivos.add(nomArchivo);
+			guardarArchivo();
 			out.writeObject(new Archivo(MENSAJE_FINAL_DESCARGA, ip, id, nomArchivo));
 		} catch (IOException e) {
 			e.printStackTrace();

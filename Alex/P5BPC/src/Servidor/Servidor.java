@@ -5,31 +5,30 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map.Entry;
 
-import Mensajes.Archivo;
-import Mensajes.Informacion;
-import Mensajes.Mensaje;
-//import Utils.InfoUsuario;
-import Utils.Pair;
+import Concurrencia.Cerrojos.Cerrojo;
+import Concurrencia.Cerrojos.LockBakery;
+import Concurrencia.Cerrojos.LockTicket;
+import Utils.InfoUsuario;
 import Utils.Usuario;
-
-import static Utils.Constantes.MENSAJE_CONFIRMACION_FINAL_SECUENCIA;
-import static Utils.Constantes.MENSAJE_FINAL_SECUENCIA;
-import static Utils.Constantes.MENSAJE_LINEA_ENVIADA;
-import static Utils.Constantes.MENSAJE_LINEA_RECIBIDA;
 
 import java.io.*;
 
 public class Servidor {
-	ServerSocket ss;
-	//ArrayList<InfoUsuario> infoUsuarios;
-	HashMap<String, ArrayList<String>> mapaInfoUsuarios;
-	HashMap<String, ArrayList<Pair<String, String>>> mapaArchivos;
-	HashMap<String, Usuario> mapaUsuarios;
+	public static final int MAX_CLIENTES = 200;
+	
+	private ServerSocket ss;
+	private ArrayList<InfoUsuario> infoUsuarios;
+	private HashMap<String, ArrayList<String>> mapaInfoUsuarios;
+	private HashMap<String, ArrayList<String>> mapaArchivos;
+	private HashMap<String, Usuario> mapaUsuarios;
+	private int clientes;
 	
 	public Servidor(int puerto) {
+		infoUsuarios = new ArrayList<>();
 		mapaInfoUsuarios = new HashMap<>();
 		mapaArchivos = new HashMap<>();
 		mapaUsuarios = new HashMap<>();
+		clientes = 1;
 		try {
 			ss = new ServerSocket(puerto);
 	    	System.out.println("Servidor iniciado en puerto " + puerto);
@@ -42,20 +41,25 @@ public class Servidor {
 	
 	public void init() {
 		cargarArchivo();
-		while (true) {
+		Cerrojo lock1 = new LockTicket(MAX_CLIENTES);
+		Cerrojo lock2 = new LockBakery(MAX_CLIENTES);
+
+		while (/*true*/clientes <= MAX_CLIENTES) {
         	try {
         		Socket s = ss.accept();
     			ObjectOutputStream out = new ObjectOutputStream(s.getOutputStream());
     			ObjectInputStream in = new ObjectInputStream(s.getInputStream());
-	        	System.out.println("Nueva conexion creada");
+	        	System.out.println("Nueva conexion creada. Cliente numero " + clientes);
 	        	
-	            new OyenteCliente(this, in, out).start();
+	            new OyenteCliente(clientes, this, in, out, lock1, lock2).start();
+	            clientes++;
 			} catch (IOException e) {
 				System.err.println("No pudo aceptarse una solicitud de conexion");
 				e.printStackTrace();
 			}
         }
 	}
+	
 	
 	private void cargarArchivo() {
 		try {
@@ -68,11 +72,12 @@ public class Servidor {
 				ArrayList<String> archivos = new ArrayList<String>();
 				for (String a : atributos[2].split(" ")) {
 					archivos.add(a);
+					String usuario = atributos[0] + "," + atributos[1];
 					if (mapaArchivos.containsKey(a))
-						mapaArchivos.get(a).add(new Pair<String, String>(atributos[0], atributos[1]));
+						mapaArchivos.get(a).add(usuario);
 					else {
-						ArrayList<Pair<String, String>> usuarios = new ArrayList<>();
-						usuarios.add(new Pair<String, String>(atributos[0], atributos[1]));
+						ArrayList<String> usuarios = new ArrayList<>();
+						usuarios.add(usuario);
 						mapaArchivos.put(a, usuarios);
 					}
 				}
@@ -86,6 +91,7 @@ public class Servidor {
 			e.printStackTrace();
 		}
 	}
+	
 	
 	private void guardarArchivo() {
 		try {
@@ -115,62 +121,43 @@ public class Servidor {
 	
 	public void guardarUsuario(String id, String ip, ArrayList<String> archivos, ObjectInputStream in, ObjectOutputStream out) {
 		String par = id + "," + ip;
-		if (mapaInfoUsuarios.containsKey(par))
-			mapaInfoUsuarios.replace(par, archivos);
-		else
+		if (mapaInfoUsuarios.containsKey(par)) {
+			ArrayList<String> array = mapaInfoUsuarios.get(par);
+			for (String s : array)
+				mapaArchivos.get(s).remove(par);
+			mapaInfoUsuarios.remove(par);
 			mapaInfoUsuarios.put(par, archivos);
+		} else {
+			mapaInfoUsuarios.put(par, archivos);
+		}
+		infoUsuarios.add(new InfoUsuario(id, ip, archivos));
 		mapaUsuarios.put(par, new Usuario(id, ip, in, out));
 		for (String s : archivos) {
 			if (mapaArchivos.containsKey(s))
-				mapaArchivos.get(s).add(new Pair<>(id, ip));
+				mapaArchivos.get(s).add(par);
 			else {
-				ArrayList<Pair<String, String>> lista = new ArrayList<>();
-				lista.add(new Pair<>(id, ip));
+				ArrayList<String> lista = new ArrayList<>();
+				lista.add(par);
 				mapaArchivos.put(s, lista);
 			}
 		}
 	}
 	
-	public void listaUsuarios(ObjectInputStream in, ObjectOutputStream out) {
-		String s;
-		Mensaje m;
-		try {
-			for (Entry<String, ArrayList<String>> info : mapaInfoUsuarios.entrySet()) {
-				s = info.getKey() + ": " + info.getValue().toString();
-				out.writeObject(new Archivo(MENSAJE_LINEA_ENVIADA, s));
-				m = (Mensaje) in.readObject();
-				if (m.getTipo() != MENSAJE_LINEA_RECIBIDA)
-						out.writeObject(new Error("La lista no pudo imprimirse de forma correcta"));	
-			}
-			out.writeObject(new Informacion(MENSAJE_FINAL_SECUENCIA));
-			m = (Mensaje) in.readObject();
-			if (m.getTipo() == MENSAJE_CONFIRMACION_FINAL_SECUENCIA)
-				System.err.println("Descarga finalizada correctamente");
-			else
-				System.out.println("Descarga finalizada incorrectamente");
-		} catch (IOException | ClassNotFoundException e) {
-			e.printStackTrace();
-		}
-	}
-	
 	public String listaUsuarios(int i) {
-		if (i < mapaUsuarios.size()) {
-			Entry<String, Usuario> usuario = new ArrayList<Entry<String, Usuario>>(mapaUsuarios.entrySet()).get(i);
-			return usuario.getKey() + ": " + mapaInfoUsuarios.get(usuario.getKey()).toString() + "\n";
-		}
+		if (i < infoUsuarios.size())
+			return infoUsuarios.get(i).toString() + "\n";
 		else
 			return "";
 	}
 	
-	public Usuario buscarFichero(String nomArchivo, String id, String ip) {
+	public Usuario buscarFichero(String id, String ip, String nomArchivo) {
 		if (mapaArchivos.containsKey(nomArchivo)) {
 			String key = id + "," + ip;
-			ArrayList<Pair<String, String>> lista = mapaArchivos.get(nomArchivo);
-			for (Pair<String, String> par : lista) {
-				String s = par.getFirst() + "," + par.getSecond();
-				if (!key.equals(s)) {
-					if (mapaUsuarios.containsKey(s))
-						return mapaUsuarios.get(s);
+			ArrayList<String> lista = mapaArchivos.get(nomArchivo);
+			for (String par : lista) {
+				if (!key.equals(par)) {
+					if (mapaUsuarios.containsKey(par))
+						return mapaUsuarios.get(par);
 				}
 			}
 			return null;
@@ -189,8 +176,12 @@ public class Servidor {
 		String key = id + "," + ip;
 		if (mapaUsuarios.containsKey(key))
 			mapaUsuarios.get(key).setDescargando(false);
-		mapaArchivos.get(nomArchivo).add(new Pair<>(id, ip));
+		mapaArchivos.get(nomArchivo).add(key);
 		mapaInfoUsuarios.get(key).add(nomArchivo);
+		for (InfoUsuario user : infoUsuarios) {
+			if (user.getId().equals(id) && user.getIp().equals(ip))
+				user.getInfo().add(nomArchivo);
+		}
 	}
 	
 	public void finSesion(String id, String ip) {
@@ -198,8 +189,14 @@ public class Servidor {
     	
 		guardarArchivo();
 		String par = id + "," + ip;
-		if (mapaUsuarios.containsKey(par))
+		if (mapaUsuarios.containsKey(par)) {
 			mapaUsuarios.remove(par);
+			for (int i = 0; i < infoUsuarios.size(); i++) {
+				InfoUsuario user = infoUsuarios.get(i);
+				if (user.getId().equals(id) && user.getIp().equals(ip))
+					infoUsuarios.remove(user);
+			}
+		}
 		else
 			System.err.println("Esto no deberia imprimirse nunca, F por ti");
     	System.out.println("Cliente desconectado");
