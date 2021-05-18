@@ -87,8 +87,6 @@ public class OyenteCliente extends Thread {
 		    			out.writeObject(new Informacion(MENSAJE_CONFIRMACION_CERRAR_CONEXION));
 		    			out.close();
 		    			in.close();
-		    			in = null;
-		    			out = null;
 						break;
 					case MENSAJE_PEDIR_FICHERO:
 						String nomArchivo = m.getString();
