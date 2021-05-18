@@ -13,21 +13,23 @@ import java.io.ObjectOutputStream;
 import java.io.PrintWriter;
 import java.net.Socket;
 import java.net.UnknownHostException;
+import java.util.concurrent.Semaphore;
 
 import Mensajes.Conexion;
 import Mensajes.Informacion;
 import Mensajes.Mensaje;
 
 public class Receptor extends Thread {
-	private Cliente c;
 	private Socket s;
+	private Cliente c;
 	private ObjectInputStream in;
 	private ObjectOutputStream out;
 	private String ip;
 	private int puerto;
 	private String nomArchivo;
+	private Semaphore sem;
 	
-	public Receptor(Cliente c, String ip, int puerto, String nomArchivo) {
+	public Receptor(Semaphore sem, Cliente c, String ip, int puerto, String nomArchivo) {
         super("Receptor");
 		this.c = c;
 		this.s = null;
@@ -36,6 +38,7 @@ public class Receptor extends Thread {
 		this.ip = ip;
 		this.puerto = puerto;
 		this.nomArchivo = nomArchivo;
+		this.sem = sem;
 	}
 	
 	@Override
@@ -71,14 +74,21 @@ public class Receptor extends Thread {
 				if (m.getTipo() == MENSAJE_FINAL_SECUENCIA) {
 	    			out.writeObject(new Informacion(MENSAJE_CONFIRMACION_FINAL_SECUENCIA));
 					System.out.println("\nDescarga finalizada correctamente");
+					
+					sem.acquire();
 					c.descargaTerminada(nomArchivo);
+					sem.release();
 				}
 				else
 					System.err.println("\nDescarga finalizada incorrectamente");
 			}
 			else
 				System.err.println("\nDescarga finalizada incorrectamente");
-		} catch (ClassNotFoundException | IOException e) {
+
+			out.close();
+			in.close();
+			s.close();
+		} catch (ClassNotFoundException | IOException | InterruptedException e) {
 			e.printStackTrace();
 		}
 	}

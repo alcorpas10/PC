@@ -80,9 +80,10 @@ public class OyenteCliente extends Thread {
 					case MENSAJE_CERRAR_CONEXION:
 						
 						lock1.takeLock(numID);
-						servidor.finSesion(m.getId(), m.getOrigen());
+						boolean b = servidor.finSesion(m.getId(), m.getOrigen());
 						lock1.releaseLock(numID);
 						
+						servidor.actualizarUsuarios(b, m.getId(), m.getOrigen());
 		    			out.writeObject(new Informacion(MENSAJE_CONFIRMACION_CERRAR_CONEXION));
 		    			out.close();
 		    			in.close();
@@ -124,7 +125,7 @@ public class OyenteCliente extends Thread {
 						break;
 				}
 			}
-    	} catch (IOException | ClassNotFoundException e) {
+    	} catch (IOException | ClassNotFoundException | InterruptedException e) {
 			System.err.println("Error al leer mensaje");
 		}
     }

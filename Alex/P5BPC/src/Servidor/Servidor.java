@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map.Entry;
 
+import Concurrencia.MonitorReadersWritersLC;
 import Concurrencia.Cerrojos.Cerrojo;
 import Concurrencia.Cerrojos.LockBakery;
 import Concurrencia.Cerrojos.LockTicket;
@@ -23,12 +24,17 @@ public class Servidor {
 	private HashMap<String, Usuario> mapaUsuarios;
 	private int clientes;
 	
+	
+	//Monitores
+	private MonitorReadersWritersLC monitorRW;
+	
 	public Servidor(int puerto) {
 		infoUsuarios = new ArrayList<>();
 		mapaInfoUsuarios = new HashMap<>();
 		mapaArchivos = new HashMap<>();
 		mapaUsuarios = new HashMap<>();
 		clientes = 1;
+		monitorRW = new MonitorReadersWritersLC();
 		try {
 			ss = new ServerSocket(puerto);
 	    	System.out.println("Servidor iniciado en puerto " + puerto);
@@ -119,7 +125,9 @@ public class Servidor {
 		}
 	}
 	
-	public void guardarUsuario(String id, String ip, ArrayList<String> archivos, ObjectInputStream in, ObjectOutputStream out) {
+	public void guardarUsuario(String id, String ip, ArrayList<String> archivos, ObjectInputStream in, ObjectOutputStream out) throws InterruptedException {
+		
+		
 		String par = id + "," + ip;
 		if (mapaInfoUsuarios.containsKey(par)) {
 			ArrayList<String> array = mapaInfoUsuarios.get(par);
@@ -130,7 +138,11 @@ public class Servidor {
 		} else {
 			mapaInfoUsuarios.put(par, archivos);
 		}
+		
+		monitorRW.realese_write();
 		infoUsuarios.add(new InfoUsuario(id, ip, archivos));
+		monitorRW.realese_write();
+		
 		mapaUsuarios.put(par, new Usuario(id, ip, in, out));
 		for (String s : archivos) {
 			if (mapaArchivos.containsKey(s))
@@ -143,11 +155,15 @@ public class Servidor {
 		}
 	}
 	
-	public String listaUsuarios(int i) {
+	public String listaUsuarios(int i) throws InterruptedException {
+		monitorRW.request_read();
+		String r;
 		if (i < infoUsuarios.size())
-			return infoUsuarios.get(i).toString() + "\n";
+			r= infoUsuarios.get(i).toString() + "\n";
 		else
-			return "";
+			r= "";
+		monitorRW.realese_read();
+		return r;
 	}
 	
 	public Usuario buscarFichero(String id, String ip, String nomArchivo) {
@@ -172,34 +188,47 @@ public class Servidor {
 		return null;
 	}
 	
-	public void descargaTerminada(String id, String ip, String nomArchivo) {
+	public void descargaTerminada(String id, String ip, String nomArchivo) throws InterruptedException {
 		String key = id + "," + ip;
 		if (mapaUsuarios.containsKey(key))
 			mapaUsuarios.get(key).setDescargando(false);
 		mapaArchivos.get(nomArchivo).add(key);
 		mapaInfoUsuarios.get(key).add(nomArchivo);
+		
+		
+		monitorRW.request_read();
 		for (InfoUsuario user : infoUsuarios) {
 			if (user.getId().equals(id) && user.getIp().equals(ip))
 				user.getInfo().add(nomArchivo);
 		}
+		monitorRW.realese_read();
 	}
 	
-	public void finSesion(String id, String ip) {
+	public boolean finSesion(String id, String ip) {
     	System.out.println("Cliente desconectandose del servidor...");
     	
 		guardarArchivo();
 		String par = id + "," + ip;
 		if (mapaUsuarios.containsKey(par)) {
 			mapaUsuarios.remove(par);
+	    	System.out.println("Cliente desconectado");
+			return true;
+		}
+		else return false;
+	}
+	
+	public void actualizarUsuarios(boolean b, String id, String ip) throws InterruptedException {
+		if (b) {
+			monitorRW.request_write();
 			for (int i = 0; i < infoUsuarios.size(); i++) {
 				InfoUsuario user = infoUsuarios.get(i);
 				if (user.getId().equals(id) && user.getIp().equals(ip))
 					infoUsuarios.remove(user);
 			}
+			monitorRW.realese_write();
 		}
 		else
-			System.err.println("Esto no deberia imprimirse nunca, F por ti");
-    	System.out.println("Cliente desconectado");
+			System.err.println("Esto no deberia imprimirse nunca");
 	}
 	
     public static void main(String[] args) throws IOException {

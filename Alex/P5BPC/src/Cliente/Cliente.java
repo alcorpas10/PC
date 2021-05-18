@@ -188,7 +188,7 @@ public class Cliente {
 		}
 	}
 	
-	public void descargaTerminada(String nomArchivo) {
+	public void descargaTerminada(String nomArchivo) { //Asegurada exclusion mediante semaforo tipo lock
 		try {
 			archivos.add(nomArchivo);
 			guardarArchivo();
