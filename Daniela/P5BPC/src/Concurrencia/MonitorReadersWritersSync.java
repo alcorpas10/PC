@@ -1,23 +1,11 @@
 package Concurrencia;
 
-import java.util.concurrent.locks.Condition;
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReentrantLock;
-
 public class MonitorReadersWritersSync {
-
-	
 	private int nr, nw;
 	
 	public MonitorReadersWritersSync() {
-		//this.k = k;
-		//infoUsuarios = new ArrayList<InfoUsuario>();
 		nr = 0;
 		nw=0;
-		//count=0;
-		//cantidad_producida=0;
-		//cantidad_consumida=0;
-
 	}
 	
 	public synchronized void request_read() throws InterruptedException {
@@ -30,7 +18,7 @@ public class MonitorReadersWritersSync {
 	public synchronized void realese_read() {
 		nr = nr -1;
 		if(nr==0)
-			notifyAll(); //notify solo 1 escritor????
+			notify();
 	}
 	
 	public synchronized void request_write() throws InterruptedException {

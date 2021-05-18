@@ -15,6 +15,7 @@ import static Utils.Constantes.ERROR;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.util.concurrent.Semaphore;
 
 import Mensajes.Archivo;
 import Mensajes.Informacion;
@@ -27,6 +28,7 @@ public class OyenteServidor extends Thread {
 	private ObjectOutputStream out;
 	private String ip;
 	private int puertoCont;
+	private Semaphore s;
 
     public OyenteServidor(Cliente c, String ip, ObjectInputStream in, ObjectOutputStream out) {
         super("OyenteServidor");
@@ -35,6 +37,7 @@ public class OyenteServidor extends Thread {
         this.out = out;
         this.in = in;
         this.puertoCont = 1234;
+        this.s = new Semaphore(1);
     }
     
     public void run() {
@@ -95,7 +98,7 @@ public class OyenteServidor extends Thread {
 		    			puertoCont++;
 						break;
 					case MENSAJE_PREPARADO_SERVIDORCLIENTE:
-						new Receptor(c, m.getOrigen(), m.getNumero(), m.getString()).start();
+						new Receptor(s, c, m.getOrigen(), m.getNumero(), m.getString()).start();
 						break;
 					case ERROR:
 						System.err.println(m.getString());

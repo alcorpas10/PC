@@ -41,7 +41,7 @@ public class Emisor extends Thread {
 	
 	@Override
 	public void run() {
-    	Socket s;
+    	Socket s = null;
     	ObjectOutputStream out = null;
     	ObjectInputStream in = null;
 		try {
@@ -77,6 +77,10 @@ public class Emisor extends Thread {
 			}
 			else
 				System.err.println("\nConexion finalizada incorrectamente");
+			
+			out.close();
+			in.close();
+			s.close();
 		} catch (ClassNotFoundException | IOException e) {
 			e.printStackTrace();
 		}

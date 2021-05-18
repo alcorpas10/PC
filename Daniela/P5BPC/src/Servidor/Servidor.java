@@ -5,7 +5,11 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map.Entry;
 
+import com.sun.xml.internal.bind.v2.schemagen.xmlschema.List;
+
+import Concurrencia.AlmacenArchivosSem;
 import Concurrencia.MonitorReadersWritersLC;
+import Concurrencia.MonitorReadersWritersSync;
 import Concurrencia.Cerrojos.Cerrojo;
 import Concurrencia.Cerrojos.LockBakery;
 import Concurrencia.Cerrojos.LockTicket;
@@ -20,21 +24,26 @@ public class Servidor {
 	private ServerSocket ss;
 	private ArrayList<InfoUsuario> infoUsuarios;
 	private HashMap<String, ArrayList<String>> mapaInfoUsuarios;
-	private HashMap<String, ArrayList<String>> mapaArchivos;
 	private HashMap<String, Usuario> mapaUsuarios;
 	private int clientes;
 	
 	
 	//Monitores
-	private MonitorReadersWritersLC monitorRW;
+	private MonitorReadersWritersLC monitorRW_LC;
+	private MonitorReadersWritersSync monitorRW_Synch;
+	
+	//Almacen de Archivos y sus usuarios:
+	private AlmacenArchivosSem almacenArchivos;
+	
 	
 	public Servidor(int puerto) {
 		infoUsuarios = new ArrayList<>();
 		mapaInfoUsuarios = new HashMap<>();
-		mapaArchivos = new HashMap<>();
+		almacenArchivos = new AlmacenArchivosSem();
 		mapaUsuarios = new HashMap<>();
 		clientes = 1;
-		monitorRW = new MonitorReadersWritersLC();
+		monitorRW_LC = new MonitorReadersWritersLC();
+		monitorRW_Synch = new MonitorReadersWritersSync();
 		try {
 			ss = new ServerSocket(puerto);
 	    	System.out.println("Servidor iniciado en puerto " + puerto);
@@ -67,7 +76,7 @@ public class Servidor {
 	}
 	
 	
-	private void cargarArchivo() {
+	private void cargarArchivo() { //hace falta concurrencia? mejor borrar?
 		try {
 			InputStream inputStream = new FileInputStream("users.txt");
 			BufferedReader br = new BufferedReader(new InputStreamReader(inputStream));
@@ -79,15 +88,13 @@ public class Servidor {
 				for (String a : atributos[2].split(" ")) {
 					archivos.add(a);
 					String usuario = atributos[0] + "," + atributos[1];
-					if (mapaArchivos.containsKey(a))
-						mapaArchivos.get(a).add(usuario);
-					else {
-						ArrayList<String> usuarios = new ArrayList<>();
-						usuarios.add(usuario);
-						mapaArchivos.put(a, usuarios);
-					}
+					
+					almacenArchivos.modify(a, usuario, true);
+					
 				}
+				monitorRW_Synch.request_write();
 				mapaInfoUsuarios.put(atributos[0] + "," + atributos[1], archivos);
+				monitorRW_Synch.realese_write();
 			}
 			br.close();
 			inputStream.close();
@@ -104,6 +111,7 @@ public class Servidor {
 			OutputStream outputStream = new FileOutputStream("users.txt");
 			BufferedWriter br = new BufferedWriter(new OutputStreamWriter(outputStream));
 			
+			monitorRW_Synch.request_read();
 			for (Entry<String, ArrayList<String>> u : mapaInfoUsuarios.entrySet()) {
 				br.append(u.getKey());
 				br.append(',');
@@ -115,6 +123,7 @@ public class Servidor {
 				br.append(lista.get(lista.size()-1));
 				br.append(';');
 			}
+			monitorRW_Synch.realese_read();
 			br.close();
 			outputStream.flush();
 			outputStream.close();
@@ -129,100 +138,137 @@ public class Servidor {
 		
 		
 		String par = id + "," + ip;
+		monitorRW_Synch.request_write();
 		if (mapaInfoUsuarios.containsKey(par)) {
 			ArrayList<String> array = mapaInfoUsuarios.get(par);
 			for (String s : array)
-				mapaArchivos.get(s).remove(par);
+				 almacenArchivos.modify(s, par, false);
+			
+				
 			mapaInfoUsuarios.remove(par);
 			mapaInfoUsuarios.put(par, archivos);
 		} else {
 			mapaInfoUsuarios.put(par, archivos);
 		}
+		monitorRW_Synch.realese_write();
 		
-		monitorRW.realese_write();
+		monitorRW_LC.request_write();
 		infoUsuarios.add(new InfoUsuario(id, ip, archivos));
-		monitorRW.realese_write();
-		
-		mapaUsuarios.put(par, new Usuario(id, ip, in, out));
+		monitorRW_LC.realese_write();
+
 		for (String s : archivos) {
-			if (mapaArchivos.containsKey(s))
-				mapaArchivos.get(s).add(par);
-			else {
-				ArrayList<String> lista = new ArrayList<>();
-				lista.add(par);
-				mapaArchivos.put(s, lista);
-			}
+			 almacenArchivos.modify(s, par, true);
 		}
 	}
 	
+	public void nuevoUsuario(String id, String ip, ObjectInputStream in, ObjectOutputStream out) {
+		String par = id + "," + ip;
+		mapaUsuarios.put(par, new Usuario(id, ip, in, out));
+	}
 	public String listaUsuarios(int i) throws InterruptedException {
-		monitorRW.request_read();
+		monitorRW_LC.request_read();
 		String r;
 		if (i < infoUsuarios.size())
 			r= infoUsuarios.get(i).toString() + "\n";
 		else
 			r= "";
-		monitorRW.realese_read();
+		monitorRW_LC.realese_read();
 		return r;
 	}
 	
+	public  ArrayList<String> listaUsuarios (String id, String ip, String nomArchivo){
+		String key = id + "," + ip;
+		return almacenArchivos.read(nomArchivo);
+	}
+	public Usuario buscarUsuario(String id, String ip,ArrayList<String> lista) {
+		String key = id + "," + ip;
+		if(lista != null) {
+			for (String par : lista) {
+				if (!key.equals(par)) {
+					if (mapaUsuarios.containsKey(par) ) //existe en mapa if(!mapaUsuarios.get(par).isDescargando())??			
+							return mapaUsuarios.get(par);
+				}
+			}
+		}
+		else
+			return null;
+		return null;
+	}
+	
+	/*
 	public Usuario buscarFichero(String id, String ip, String nomArchivo) {
-		if (mapaArchivos.containsKey(nomArchivo)) {
-			String key = id + "," + ip;
-			ArrayList<String> lista = mapaArchivos.get(nomArchivo);
+		String key = id + "," + ip;
+		
+		ArrayList <String> lista = almacenArchivos.read(nomArchivo);
+			
+		if(lista == null) {
 			for (String par : lista) {
 				if (!key.equals(par)) {
 					if (mapaUsuarios.containsKey(par))
 						return mapaUsuarios.get(par);
 				}
 			}
-			return null;
 		}
-		else return null;
+		else
+			return null;
+		return null;
 	}
-	
-	public Usuario buscarUsuario(String id, String ip) {
+	*/
+	public Usuario getUsuario(String id, String ip) {
 		String key = id + "," + ip;
 		if (mapaUsuarios.containsKey(key))
 			return mapaUsuarios.get(key);
 		return null;
 	}
 	
-	public void descargaTerminada(String id, String ip, String nomArchivo) throws InterruptedException {
+	public void desocuparUsuario(String id, String ip) {
 		String key = id + "," + ip;
 		if (mapaUsuarios.containsKey(key))
 			mapaUsuarios.get(key).setDescargando(false);
-		mapaArchivos.get(nomArchivo).add(key);
+	}
+	
+	public void descargaTerminada(String id, String ip, String nomArchivo) throws InterruptedException {
+		String key = id + "," + ip;
+		almacenArchivos.modify(nomArchivo, key, true);
+		
+		monitorRW_Synch.request_write();
 		mapaInfoUsuarios.get(key).add(nomArchivo);
+		monitorRW_Synch.request_read();
 		
 		
-		monitorRW.request_read();
+		monitorRW_LC.request_read();
 		for (InfoUsuario user : infoUsuarios) {
 			if (user.getId().equals(id) && user.getIp().equals(ip))
 				user.getInfo().add(nomArchivo);
 		}
-		monitorRW.realese_read();
+		monitorRW_LC.realese_read();
 	}
 	
-	public void finSesion(String id, String ip) throws InterruptedException {
+	public boolean finSesion(String id, String ip) {
     	System.out.println("Cliente desconectandose del servidor...");
     	
 		guardarArchivo();
 		String par = id + "," + ip;
 		if (mapaUsuarios.containsKey(par)) {
 			mapaUsuarios.remove(par);
-			
-			monitorRW.request_write();
+	    	System.out.println("Cliente desconectado");
+			return true;
+		}
+		else return false;
+	}
+	
+	public void actualizarUsuarios(boolean b, String id, String ip) throws InterruptedException {
+		if (b) {
+			monitorRW_LC.request_write();
 			for (int i = 0; i < infoUsuarios.size(); i++) {
 				InfoUsuario user = infoUsuarios.get(i);
 				if (user.getId().equals(id) && user.getIp().equals(ip))
 					infoUsuarios.remove(user);
 			}
-			monitorRW.realese_write();
+			monitorRW_LC.realese_write();
 		}
 		else
-			System.err.println("Esto no deberia imprimirse nunca, F por ti");
-    	System.out.println("Cliente desconectado");
+			System.err.println("Esto no deberia imprimirse nunca");
 	}
 	
     public static void main(String[] args) throws IOException {
