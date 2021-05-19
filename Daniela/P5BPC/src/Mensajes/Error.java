@@ -36,4 +36,9 @@ public class Error extends Mensaje {
 		return error;
 	}
 
+	@Override
+	public byte[] getBuffer() {
+		return null;
+	}
+
 }

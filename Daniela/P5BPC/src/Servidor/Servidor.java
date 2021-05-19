@@ -5,35 +5,39 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map.Entry;
 
-import com.sun.xml.internal.bind.v2.schemagen.xmlschema.List;
-
 import Concurrencia.AlmacenArchivosSem;
 import Concurrencia.MonitorReadersWritersLC;
 import Concurrencia.MonitorReadersWritersSync;
 import Concurrencia.Cerrojos.Cerrojo;
-import Concurrencia.Cerrojos.LockBakery;
 import Concurrencia.Cerrojos.LockTicket;
 import Utils.InfoUsuario;
 import Utils.Usuario;
 
 import java.io.*;
 
+
+/*
+ * 
+ ALUMNOS: DANIELA ALEJANDRA CORDOVA PORTA, ALEJANDRO CORPAS CALVO
+ 
+ Diseños de este servidor y diseño basico de la practica en las imagenes PNG
+ */
 public class Servidor {
 	public static final int MAX_CLIENTES = 200;
 	
 	private ServerSocket ss;
-	private ArrayList<InfoUsuario> infoUsuarios;
-	private HashMap<String, ArrayList<String>> mapaInfoUsuarios;
-	private HashMap<String, Usuario> mapaUsuarios;
+	private ArrayList<InfoUsuario> infoUsuarios; //Lista de Usuarios conectados, mayor concurrencia al enviar usuario por usuario al cliente
+	private HashMap<String, ArrayList<String>> mapaInfoUsuarios; //mapa de usuarios con su informacion
+	private HashMap<String, Usuario> mapaUsuarios; //mapa de los usuarios con el objeto Usuario (para obtener su in y out mas facilmente) y sincronizar sus descargas
 	private int clientes;
 	
 	
-	//Monitores
+	//Monitores, Readers-Writers
 	private MonitorReadersWritersLC monitorRW_LC;
 	private MonitorReadersWritersSync monitorRW_Synch;
 	
 	//Almacen de Archivos y sus usuarios:
-	private AlmacenArchivosSem almacenArchivos;
+	private AlmacenArchivosSem almacenArchivos; //almacen de los archivos con la lista de los usuarios que lo poseen
 	
 	
 	public Servidor(int puerto) {
@@ -46,7 +50,7 @@ public class Servidor {
 		monitorRW_Synch = new MonitorReadersWritersSync();
 		try {
 			ss = new ServerSocket(puerto);
-	    	System.out.println("Servidor iniciado en puerto " + puerto);
+	    	System.out.println("Servidor iniciado en puerto " + puerto + " con IP: " + InetAddress.getLocalHost().getHostAddress()); //getIP()); //Para usar IP publica
 		} catch (IOException e) {
 			System.err.println("No pudo iniciarse el servidor");
 			e.printStackTrace();
@@ -56,8 +60,7 @@ public class Servidor {
 	
 	public void init() {
 		cargarArchivo();
-		Cerrojo lock1 = new LockTicket(MAX_CLIENTES);
-		Cerrojo lock2 = new LockBakery(MAX_CLIENTES);
+		Cerrojo lock = new LockTicket(MAX_CLIENTES);
 
 		while (/*true*/clientes <= MAX_CLIENTES) {
         	try {
@@ -66,7 +69,7 @@ public class Servidor {
     			ObjectInputStream in = new ObjectInputStream(s.getInputStream());
 	        	System.out.println("Nueva conexion creada. Cliente numero " + clientes);
 	        	
-	            new OyenteCliente(clientes, this, in, out, lock1, lock2).start();
+	            new OyenteCliente(clientes, this, in, out, lock).start();
 	            clientes++;
 			} catch (IOException e) {
 				System.err.println("No pudo aceptarse una solicitud de conexion");
@@ -75,37 +78,54 @@ public class Servidor {
         }
 	}
 	
+	private String getIP() { //Para usar IP publica
+        BufferedReader in = null;
+        try {
+    		URL whatismyip = new URL("http://checkip.amazonaws.com");
+            in = new BufferedReader(new InputStreamReader(whatismyip.openStream()));
+            String ip = in.readLine();
+            in.close();
+            return ip;
+        } catch (IOException e) {
+			e.printStackTrace();
+		}
+        return "";
+    }	
 	
-	private void cargarArchivo() { //hace falta concurrencia? mejor borrar?
+	//Cargar Base de datos
+	private void cargarArchivo() { 
 		try {
 			InputStream inputStream = new FileInputStream("users.txt");
 			BufferedReader br = new BufferedReader(new InputStreamReader(inputStream));
 			String linea = br.readLine();
-			String[] users = linea.split(";");
-			for (String s : users) {
-				String[] atributos = s.split(",");
-				ArrayList<String> archivos = new ArrayList<String>();
-				for (String a : atributos[2].split(" ")) {
-					archivos.add(a);
-					String usuario = atributos[0] + "," + atributos[1];
-					
-					almacenArchivos.modify(a, usuario, true);
-					
+			if (linea != null) {
+				String[] users = linea.split(";");
+				for (String s : users) {
+					String[] atributos = s.split(",");
+					ArrayList<String> archivos = new ArrayList<String>();
+					if (atributos.length == 3) {
+						for (String a : atributos[2].split(" ")) {
+							archivos.add(a);
+							String usuario = atributos[0] + "," + atributos[1];
+							
+							almacenArchivos.modify(a, usuario, true);
+							
+						}
+					}
+					monitorRW_Synch.request_write();
+					mapaInfoUsuarios.put(atributos[0] + "," + atributos[1], archivos);
+					monitorRW_Synch.release_write();
 				}
-				monitorRW_Synch.request_write();
-				mapaInfoUsuarios.put(atributos[0] + "," + atributos[1], archivos);
-				monitorRW_Synch.realese_write();
 			}
 			br.close();
 			inputStream.close();
         	System.out.println("Base de datos cargada correctamente");
 		} catch(Exception e) {
 			System.err.println("Archivo users.txt no existente.");
-			e.printStackTrace();
 		}
 	}
 	
-	
+	//Actualizar txt de Base de Datos
 	private void guardarArchivo() {
 		try {
 			OutputStream outputStream = new FileOutputStream("users.txt");
@@ -116,23 +136,23 @@ public class Servidor {
 				br.append(u.getKey());
 				br.append(',');
 				ArrayList<String> lista = u.getValue();
-				for (int i = 0; i < lista.size()-1; i++) {
-					br.append(lista.get(i));
+				for (int i = 0; i < lista.size(); i++) {
 					br.append(' ');
+					br.append(lista.get(i));
 				}
-				br.append(lista.get(lista.size()-1));
 				br.append(';');
 			}
-			monitorRW_Synch.realese_read();
+			monitorRW_Synch.release_read();
 			br.close();
 			outputStream.flush();
 			outputStream.close();
         	System.out.println("Base de datos guardada correctamente");
 		} catch(Exception e) {
 			System.err.println("Error al guardar en users.txt.");
-			e.printStackTrace();
 		}
 	}
+	
+	//METODOS PARA GUARDAR NUEVO USUARIO:
 	
 	public void guardarUsuario(String id, String ip, ArrayList<String> archivos, ObjectInputStream in, ObjectOutputStream out) throws InterruptedException {
 		
@@ -150,11 +170,11 @@ public class Servidor {
 		} else {
 			mapaInfoUsuarios.put(par, archivos);
 		}
-		monitorRW_Synch.realese_write();
+		monitorRW_Synch.release_write();
 		
 		monitorRW_LC.request_write();
-		infoUsuarios.add(new InfoUsuario(id, ip, archivos));
-		monitorRW_LC.realese_write();
+		infoUsuarios.add(new InfoUsuario(id, ip, new ArrayList<String>(archivos)));
+		monitorRW_LC.release_write();
 
 		for (String s : archivos) {
 			 almacenArchivos.modify(s, par, true);
@@ -165,6 +185,8 @@ public class Servidor {
 		String par = id + "," + ip;
 		mapaUsuarios.put(par, new Usuario(id, ip, in, out));
 	}
+	
+	//Lista de usuarios conectados
 	public String listaUsuarios(int i) throws InterruptedException {
 		monitorRW_LC.request_read();
 		String r;
@@ -172,14 +194,17 @@ public class Servidor {
 			r= infoUsuarios.get(i).toString() + "\n";
 		else
 			r= "";
-		monitorRW_LC.realese_read();
+		monitorRW_LC.release_read();
 		return r;
 	}
 	
+	//Dado archivo, que usuarios tienen archivo para descargar
 	public  ArrayList<String> listaUsuarios (String id, String ip, String nomArchivo){
-		String key = id + "," + ip;
 		return almacenArchivos.read(nomArchivo);
 	}
+	
+	//Obtener usuario dado ip, id que este en la lista de posibles Clientes disponible para descargar
+	//Se revisa que esten conectados actualmente
 	public Usuario buscarUsuario(String id, String ip,ArrayList<String> lista) {
 		String key = id + "," + ip;
 		if(lista != null) {
@@ -195,25 +220,7 @@ public class Servidor {
 		return null;
 	}
 	
-	/*
-	public Usuario buscarFichero(String id, String ip, String nomArchivo) {
-		String key = id + "," + ip;
-		
-		ArrayList <String> lista = almacenArchivos.read(nomArchivo);
-			
-		if(lista == null) {
-			for (String par : lista) {
-				if (!key.equals(par)) {
-					if (mapaUsuarios.containsKey(par))
-						return mapaUsuarios.get(par);
-				}
-			}
-		}
-		else
-			return null;
-		return null;
-	}
-	*/
+	//Dado ip, id, obtener usuario
 	public Usuario getUsuario(String id, String ip) {
 		String key = id + "," + ip;
 		if (mapaUsuarios.containsKey(key))
@@ -221,29 +228,45 @@ public class Servidor {
 		return null;
 	}
 	
+	//Un usuario ya no esta descargando, se hace para que pueda actualizar ahora su BD de archivos privada
 	public void desocuparUsuario(String id, String ip) {
 		String key = id + "," + ip;
 		if (mapaUsuarios.containsKey(key))
 			mapaUsuarios.get(key).setDescargando(false);
 	}
 	
+	//Recorrer un array list y encontrar un string
+	public boolean hasString(ArrayList<String> lista, String s) {
+		for (String cadena: lista) {
+			if(cadena.equals(s))
+				return true;
+		}
+		return false;
+	}
+	
+	//Se termino una descarga, actualizar la base de datos
 	public void descargaTerminada(String id, String ip, String nomArchivo) throws InterruptedException {
 		String key = id + "," + ip;
 		almacenArchivos.modify(nomArchivo, key, true);
 		
 		monitorRW_Synch.request_write();
-		mapaInfoUsuarios.get(key).add(nomArchivo);
-		monitorRW_Synch.request_read();
+		boolean contiene = hasString(mapaInfoUsuarios.get(key), nomArchivo);
+		if (!contiene)
+			mapaInfoUsuarios.get(key).add(nomArchivo);
+		monitorRW_Synch.release_write();
 		
-		
-		monitorRW_LC.request_read();
-		for (InfoUsuario user : infoUsuarios) {
-			if (user.getId().equals(id) && user.getIp().equals(ip))
-				user.getInfo().add(nomArchivo);
+		if (!contiene) {
+			monitorRW_LC.request_write();
+			for (InfoUsuario user : infoUsuarios) {
+				if (user.getId().equals(id) && user.getIp().equals(ip))
+					user.getInfo().add(nomArchivo);
+			}
+			monitorRW_LC.release_write();
 		}
-		monitorRW_LC.realese_read();
+		
 	}
 	
+	//Usuario cierra sesion, actualiza BD de usuarios conectados
 	public boolean finSesion(String id, String ip) {
     	System.out.println("Cliente desconectandose del servidor...");
     	
@@ -256,7 +279,7 @@ public class Servidor {
 		}
 		else return false;
 	}
-	
+	//Usuario cierra sesion, actualiza BD de usuarios conectados
 	public void actualizarUsuarios(boolean b, String id, String ip) throws InterruptedException {
 		if (b) {
 			monitorRW_LC.request_write();
@@ -265,7 +288,7 @@ public class Servidor {
 				if (user.getId().equals(id) && user.getIp().equals(ip))
 					infoUsuarios.remove(user);
 			}
-			monitorRW_LC.realese_write();
+			monitorRW_LC.release_write();
 		}
 		else
 			System.err.println("Esto no deberia imprimirse nunca");

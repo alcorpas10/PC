@@ -3,6 +3,8 @@ package Cliente;
 import java.io.*;
 import java.net.*;
 import java.util.ArrayList;
+import java.util.HashSet;
+
 import Mensajes.Archivo;
 import Mensajes.Conexion;
 import Mensajes.Informacion;
@@ -17,7 +19,7 @@ public class Cliente {
 	private String id;
 	private String ip;
 	private Socket s;
-	private ArrayList<String> archivos;
+	private HashSet<String> archivos;
 	private ObjectInputStream in;
 	private ObjectOutputStream out;
 	private BufferedReader stdIn;
@@ -27,14 +29,14 @@ public class Cliente {
 		try {
 	    	System.out.print("Introduzca su nombre de usuario: ");
 			id = stdIn.readLine();
+			ip = InetAddress.getLocalHost().getHostAddress(); //getIP()); //Para usar IP publica
 		} catch (IOException e) {
 			System.err.println("Error al leer nombre de usuario");
 			e.printStackTrace();
 	        System.exit(1);
 		}
-		ip = getIP();//InetAddress.getLocalHost().getHostAddress();
 		s = null;
-		archivos = new ArrayList<>();
+		archivos = new HashSet<String>();
 		in = null;
 		out = null;
 	}
@@ -46,7 +48,7 @@ public class Cliente {
 			out = new ObjectOutputStream(s.getOutputStream());
 	        in = new ObjectInputStream(s.getInputStream());
 	    	System.out.println("Usuario " + id + " conectandose al servidor " + IPservidor + "...");
-			out.writeObject(new Conexion(MENSAJE_CONEXION, id, ip, archivos));
+			out.writeObject(new Conexion(MENSAJE_CONEXION, id, ip, new ArrayList<String>(archivos)));
 		} catch (UnknownHostException e) {
 			System.err.println("No pudo encontrarse un servidor en " + IPservidor);
 			e.printStackTrace();
@@ -64,7 +66,7 @@ public class Cliente {
         }
 	}
 	
-	private String getIP() {
+	private String getIP() { //Para usar IP publica
         BufferedReader in = null;
         try {
     		URL whatismyip = new URL("http://checkip.amazonaws.com");
@@ -125,8 +127,10 @@ public class Cliente {
 			BufferedReader br = new BufferedReader(new InputStreamReader(inputStream));
 			
 			String linea = br.readLine();
-			for (String a : linea.split(";"))
-				archivos.add(a);
+			if (linea != null) {
+				for (String a : linea.split(";"))
+					archivos.add(a);
+			}
 			br.close();
         	System.out.println("Lista de archivos cargada correctamente");
 		} catch(Exception e) {
@@ -169,7 +173,7 @@ public class Cliente {
 
 	private void descargarArchivo() {
 		try {
-			System.out.print("¿Que archivo desea descargar?: ");
+			System.out.print("Â¿Que archivo desea descargar?: ");
 			String nomArchivo = stdIn.readLine();
 			out.writeObject(new Archivo(MENSAJE_PEDIR_FICHERO, ip, id, nomArchivo));
 			System.out.println("Iniciando conexion para descarga...");

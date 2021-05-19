@@ -45,4 +45,8 @@ public class Lista extends Mensaje {
 	public ArrayList<String> getLista() {
 		return lista;
 	}
+	@Override
+	public byte[] getBuffer() {
+		return null;
+	}
 }

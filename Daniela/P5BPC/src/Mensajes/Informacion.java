@@ -36,4 +36,9 @@ public class Informacion extends Mensaje {
 	public String getString() {
 		return null;
 	}
+
+	@Override
+	public byte[] getBuffer() {
+		return null;
+	}
 }

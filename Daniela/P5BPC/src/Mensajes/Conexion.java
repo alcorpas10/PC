@@ -45,4 +45,9 @@ public class Conexion extends Mensaje {
 		return null;
 	}
 
+	@Override
+	public byte[] getBuffer() {
+		return null;
+	}
+
 }

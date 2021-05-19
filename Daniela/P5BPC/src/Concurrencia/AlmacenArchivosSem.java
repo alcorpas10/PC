@@ -1,12 +1,8 @@
 package Concurrencia;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
-import java.util.List;
 import java.util.concurrent.Semaphore;
-
-import Utils.Usuario;
 
 
 public class AlmacenArchivosSem  {
@@ -18,7 +14,10 @@ public class AlmacenArchivosSem  {
 
 	private HashMap<String, ArrayList<String>> mapaArchivos;
 	
-	
+	/*
+	 * Almacen con Semaforos de tipo Readers-Writers para sincronizar los datos del mapa de los archivos y sus
+	 * correspondientes clientes disponibles que poseen ese archivo 
+	 */
 	public AlmacenArchivosSem() {
 		
 		mapaArchivos = new HashMap<>();

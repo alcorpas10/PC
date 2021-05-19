@@ -34,17 +34,15 @@ public class OyenteCliente extends Thread {
 	private Servidor servidor;
     private ObjectInputStream in;
     private ObjectOutputStream out;
-    private Cerrojo lock1;
-    private Cerrojo lock2;
+    private Cerrojo lock;
 
-    public OyenteCliente(int numID, Servidor servidor, ObjectInputStream in, ObjectOutputStream out, Cerrojo lock1, Cerrojo lock2) {
+    public OyenteCliente(int numID, Servidor servidor, ObjectInputStream in, ObjectOutputStream out, Cerrojo lock) {
         super("OyenteCliente");
         this.numID = numID;
         this.servidor = servidor;
         this.out = out;
         this.in = in;
-        this.lock1 = lock1;
-        this.lock2 = lock2;
+        this.lock = lock;
     }
     
     public void run() {
@@ -52,20 +50,21 @@ public class OyenteCliente extends Thread {
 		int tipo;
 		String s = "";
 		Boolean salir=false;
-		try {
-			while (!salir && in != null && out != null) {
+		while (!salir && in != null && out != null) {
+			try {
 				m = (Mensaje) in.readObject();
 				tipo = m.getTipo();
 				switch (tipo) {
 					case MENSAJE_CONEXION:
 						servidor.guardarUsuario(m.getId(), m.getOrigen(), m.getLista(), in, out);
 						
-						lock1.takeLock(numID);
+						lock.takeLock(numID);
 						servidor.nuevoUsuario(m.getId(), m.getOrigen(), in, out);
-						lock1.releaseLock(numID);
+						lock.releaseLock(numID);
 						
 						out.writeObject(new Informacion(MENSAJE_CONFIRMACION_CONEXION));
 						break;
+						
 					case MENSAJE_LISTA_USUARIOS:
 		    			out.writeObject(new Informacion(MENSAJE_CONFIRMACION_LISTA_USUARIOS));
 						s = servidor.listaUsuarios(0);
@@ -74,6 +73,7 @@ public class OyenteCliente extends Thread {
 						else
 							out.writeObject(new Lista(MENSAJE_LINEA_ENVIADA, 0, s));
 						break;
+						
 					case MENSAJE_LINEA_RECIBIDA:
 						s = servidor.listaUsuarios(m.getNumero()+1);
 						if (s.equals(""))
@@ -81,14 +81,16 @@ public class OyenteCliente extends Thread {
 						else
 							out.writeObject(new Lista(MENSAJE_LINEA_ENVIADA, m.getNumero()+1, s));
 						break;
+						
 					case MENSAJE_CONFIRMACION_FINAL_SECUENCIA:
 						System.out.println("Lista enviada exitosamente");
 						break;
+						
 					case MENSAJE_CERRAR_CONEXION:
 						
-						lock1.takeLock(numID);
+						lock.takeLock(numID);
 						boolean b = servidor.finSesion(m.getId(), m.getOrigen());
-						lock1.releaseLock(numID);
+						lock.releaseLock(numID);
 						
 						servidor.actualizarUsuarios(b, m.getId(), m.getOrigen());
 		    			out.writeObject(new Informacion(MENSAJE_CONFIRMACION_CERRAR_CONEXION));
@@ -98,6 +100,7 @@ public class OyenteCliente extends Thread {
 		    			out=null;
 		    			salir=true;
 						break;
+						
 					case MENSAJE_PEDIR_FICHERO:
 						String nomArchivo = m.getString();
 						
@@ -105,11 +108,10 @@ public class OyenteCliente extends Thread {
 						
 						 Usuario usuario1 =null;
 						 
-						 
 						 //OJO, Vvarios pueden descargar del mismo archivo del mismo Cliente??
-						 lock1.takeLock(numID);
+						 lock.takeLock(numID);
 						 usuario1 = servidor.buscarUsuario(m.getId(), m.getOrigen(), lista);
-						 lock1.releaseLock(numID);
+						 lock.releaseLock(numID);
 						 
 						 
 						//Usuario usuario1 = servidor.buscarFichero(m.getId(), m.getOrigen(), nomArchivo);						
@@ -119,41 +121,35 @@ public class OyenteCliente extends Thread {
 						else 
 							out.writeObject(new Error("No hay ningun usuario con ese archivo conectado actualmente :(\n"));
 						break;
+						
 					case MENSAJE_PREPARADO_CLIENTESERVIDOR:
-						lock1.takeLock(numID);
+						lock.takeLock(numID);
 						Usuario usuario2 = servidor.getUsuario(m.getId(), m.getDestino());
 						if (usuario2 != null) {
 							usuario2.setDescargando(true);
 							ObjectOutputStream o = usuario2.getOut();
-							lock1.releaseLock(numID);
+							lock.releaseLock(numID);
 
 							o.writeObject(new Archivo(MENSAJE_PREPARADO_SERVIDORCLIENTE, m.getOrigen(), m.getDestino(), m.getId(), m.getNumero(), m.getString()));
 						} else {
-							lock1.releaseLock(numID);
+							lock.releaseLock(numID);
 							out.writeObject(new Error("El usuario que habia pedido el archivo se ha desconectado :("));
 						}
 						break;
+						
 					case MENSAJE_FINAL_DESCARGA:
-						
-						/*
-						lock1.takeLock(numID);
-						Usuario usuario3 = servidor.buscarUsuario(m.getId(), m.getDestino());
-						usuario3.setDescargando(false);
-						lock1.releaseLock(numID);
-						*/
-						
-						lock1.takeLock(numID);
+						lock.takeLock(numID);
 						servidor.desocuparUsuario(m.getId(), m.getOrigen());
-						lock1.releaseLock(numID);
+						lock.releaseLock(numID);
 						servidor.descargaTerminada(m.getId(), m.getOrigen(), m.getString());
 						break;
 					default:
 						System.err.println("Mensaje recibido no valido");
 						break;
 				}
+	    	} catch (IOException | ClassNotFoundException | InterruptedException e) {
+				System.err.println("Error al leer mensaje");
 			}
-    	} catch (IOException | ClassNotFoundException | InterruptedException e) {
-			System.err.println("Error al leer mensaje");
 		}
     }
 }
