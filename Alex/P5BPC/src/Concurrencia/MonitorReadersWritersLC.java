@@ -29,7 +29,7 @@ public class MonitorReadersWritersLC {
 	public void realese_read() {
 		l.lock();
 		nr = nr -1;
-		if(nr==0)okWrite.notify(); //notify solo 1 escritor
+		if(nr==0)okWrite.signal(); //notify solo 1 escritor
 		l.unlock();
 	}
 	

@@ -25,18 +25,24 @@ import static Utils.Constantes.MENSAJE_CONFIRMACION_FINAL_SECUENCIA;
 public class Emisor extends Thread {
 	private ServerSocket ss;
 	private String nomArchivo;
+	private int puerto;
 	
-	public Emisor(int puerto, String archivo) {
+	public Emisor(String archivo) {
         super("Emisor");
 		this.nomArchivo = archivo;
 		try {
-			ss = new ServerSocket(puerto);
+			ss = new ServerSocket(0);
+			this.puerto = ss.getLocalPort();
 	    	System.out.println("\nServidor P2P iniciado en puerto " + puerto);
 		} catch (IOException e) {
 			System.err.println("\nNo pudo iniciarse el servidor");
 			e.printStackTrace();
 	        System.exit(1);
 		}
+	}
+	
+	public int getPuerto() {
+		return puerto;
 	}
 	
 	@Override

@@ -169,7 +169,7 @@ public class Cliente {
 
 	private void descargarArchivo() {
 		try {
-			System.out.print("Â¿Que archivo desea descargar?: ");
+			System.out.print("¿Que archivo desea descargar?: ");
 			String nomArchivo = stdIn.readLine();
 			out.writeObject(new Archivo(MENSAJE_PEDIR_FICHERO, ip, id, nomArchivo));
 			System.out.println("Iniciando conexion para descarga...");

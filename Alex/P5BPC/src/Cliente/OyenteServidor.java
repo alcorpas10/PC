@@ -27,7 +27,6 @@ public class OyenteServidor extends Thread {
 	private ObjectInputStream in;
 	private ObjectOutputStream out;
 	private String ip;
-	private int puertoCont;
 	private Semaphore s;
 
     public OyenteServidor(Cliente c, String ip, ObjectInputStream in, ObjectOutputStream out) {
@@ -36,7 +35,6 @@ public class OyenteServidor extends Thread {
         this.ip = ip;
         this.out = out;
         this.in = in;
-        this.puertoCont = 1234;
         this.s = new Semaphore(1);
     }
     
@@ -93,9 +91,9 @@ public class OyenteServidor extends Thread {
 						break;
 					case MENSAJE_EMITIR_FICHERO:
 						String nomArchivo = m.getString();
-		    			out.writeObject(new Archivo(MENSAJE_PREPARADO_CLIENTESERVIDOR, ip, m.getOrigen(), m.getId(), puertoCont, nomArchivo));
-		    			new Emisor(puertoCont, nomArchivo).start();
-		    			puertoCont++;
+						Emisor emisor = new Emisor(nomArchivo);
+		    			out.writeObject(new Archivo(MENSAJE_PREPARADO_CLIENTESERVIDOR, ip, m.getOrigen(), m.getId(), emisor.getPuerto(), nomArchivo));
+		    			emisor.start();
 						break;
 					case MENSAJE_PREPARADO_SERVIDORCLIENTE:
 						new Receptor(s, c, m.getOrigen(), m.getNumero(), m.getString()).start();
