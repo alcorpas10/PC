@@ -7,6 +7,7 @@ public class Archivo extends Mensaje {
 	 * 
 	 */
 	private static final long serialVersionUID = 1L;
+	private byte[] buffer;
 	private String string;
 	private String id;
 	private int puerto;
@@ -30,9 +31,9 @@ public class Archivo extends Mensaje {
 		this.string = nomArchivo;
 	}
 	
-	public Archivo(int tipo, String linea) {
+	public Archivo(int tipo, byte[] buffer) {
 		super(tipo, "", "");
-		this.string = linea;
+		this.buffer = buffer;
 	}
 
 	@Override
@@ -53,5 +54,10 @@ public class Archivo extends Mensaje {
 	@Override
 	public int getNumero() {
 		return puerto;
+	}
+
+	@Override
+	public byte[] getBuffer() {
+		return buffer;
 	}
 }

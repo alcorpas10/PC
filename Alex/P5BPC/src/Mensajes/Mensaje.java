@@ -39,4 +39,6 @@ public abstract class Mensaje implements Serializable {
 	public abstract String getString();
 	
 	public abstract int getNumero();
+	
+	public abstract byte[] getBuffer();
 }

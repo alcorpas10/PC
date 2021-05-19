@@ -7,10 +7,10 @@ import static Utils.Constantes.MENSAJE_LINEA_RECIBIDA;
 import static Utils.Constantes.MENSAJE_FINAL_SECUENCIA;
 import static Utils.Constantes.MENSAJE_CONFIRMACION_FINAL_SECUENCIA;
 
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
-import java.io.PrintWriter;
 import java.net.Socket;
 import java.net.UnknownHostException;
 import java.util.concurrent.Semaphore;
@@ -62,15 +62,15 @@ public class Receptor extends Thread {
 			m = (Mensaje) in.readObject();
 			if (m.getTipo() == MENSAJE_CONEXION) {
 				out.writeObject(new Conexion(MENSAJE_CONFIRMACION_CONEXION));
-				PrintWriter pw = new PrintWriter(nomArchivo);
+				FileOutputStream fout = new FileOutputStream("Hola.jpg");
 				m = (Mensaje) in.readObject();
 				while (m.getTipo() == MENSAJE_LINEA_ENVIADA) {
-					pw.println(m.getString());
+					fout.write(m.getBuffer());
 	    			out.writeObject(new Informacion(MENSAJE_LINEA_RECIBIDA));
 	    			m = (Mensaje) in.readObject();
 				}
-				pw.flush();
-				pw.close();
+				fout.flush();
+				fout.close();
 				if (m.getTipo() == MENSAJE_FINAL_SECUENCIA) {
 	    			out.writeObject(new Informacion(MENSAJE_CONFIRMACION_FINAL_SECUENCIA));
 					System.out.println("\nDescarga finalizada correctamente");

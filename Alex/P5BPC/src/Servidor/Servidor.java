@@ -90,20 +90,22 @@ public class Servidor {
 			InputStream inputStream = new FileInputStream("users.txt");
 			BufferedReader br = new BufferedReader(new InputStreamReader(inputStream));
 			String linea = br.readLine();
-			String[] users = linea.split(";");
-			for (String s : users) {
-				String[] atributos = s.split(",");
-				ArrayList<String> archivos = new ArrayList<String>();
-				for (String a : atributos[2].split(" ")) {
-					archivos.add(a);
-					String usuario = atributos[0] + "," + atributos[1];
-					
-					almacenArchivos.modify(a, usuario, true);
-					
+			if (linea != null) {
+				String[] users = linea.split(";");
+				for (String s : users) {
+					String[] atributos = s.split(",");
+					ArrayList<String> archivos = new ArrayList<String>();
+					for (String a : atributos[2].split(" ")) {
+						archivos.add(a);
+						String usuario = atributos[0] + "," + atributos[1];
+						
+						almacenArchivos.modify(a, usuario, true);
+						
+					}
+					monitorRW_Synch.request_write();
+					mapaInfoUsuarios.put(atributos[0] + "," + atributos[1], archivos);
+					monitorRW_Synch.realese_write();
 				}
-				monitorRW_Synch.request_write();
-				mapaInfoUsuarios.put(atributos[0] + "," + atributos[1], archivos);
-				monitorRW_Synch.realese_write();
 			}
 			br.close();
 			inputStream.close();

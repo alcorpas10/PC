@@ -1,10 +1,7 @@
 package Cliente;
 
-import java.io.BufferedReader;
 import java.io.FileInputStream;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.ServerSocket;
@@ -31,8 +28,8 @@ public class Emisor extends Thread {
         super("Emisor");
 		this.nomArchivo = archivo;
 		try {
-			ss = new ServerSocket(0);
-			this.puerto = ss.getLocalPort();
+			ss = new ServerSocket(1234);
+			this.puerto = 1234;//ss.getLocalPort();
 	    	System.out.println("\nServidor P2P iniciado en puerto " + puerto);
 		} catch (IOException e) {
 			System.err.println("\nNo pudo iniciarse el servidor");
@@ -64,16 +61,20 @@ public class Emisor extends Thread {
 		try {
 			Mensaje m = (Mensaje) in.readObject();
 			if (m.getTipo() == MENSAJE_CONFIRMACION_CONEXION) {
-				InputStream inputStream = new FileInputStream(nomArchivo);
-				BufferedReader br = new BufferedReader(new InputStreamReader(inputStream));
-				String linea = br.readLine();
-				while(linea != null) {
-					out.writeObject(new Archivo(MENSAJE_LINEA_ENVIADA, linea));
+				FileInputStream inputStream = new FileInputStream(nomArchivo);
+				byte[] buffer = new byte[8192];
+				int numBytes = inputStream.read(buffer);
+				while(numBytes > 0) {
+					out.writeObject(new Archivo(MENSAJE_LINEA_ENVIADA, buffer));
 					m = (Mensaje) in.readObject();
-					if (m.getTipo() == MENSAJE_LINEA_RECIBIDA)
-						linea = br.readLine();
+					if (m.getTipo() == MENSAJE_LINEA_RECIBIDA) {
+						buffer = new byte[8192];
+						numBytes = inputStream.read(buffer);
+					}
+					else
+						numBytes = 0;
 				}
-				br.close();
+				inputStream.close();
 				out.writeObject(new Informacion(MENSAJE_FINAL_SECUENCIA));
 				m = (Mensaje) in.readObject();
 				if (m.getTipo() == MENSAJE_CONFIRMACION_FINAL_SECUENCIA)
