@@ -24,12 +24,26 @@ public class Emisor extends Thread {
 	private String nomArchivo;
 	private int puerto;
 	
-	public Emisor(String archivo) {
+	public Emisor(int puerto, String archivo) {
         super("Emisor");
 		this.nomArchivo = archivo;
 		try {
-			ss = new ServerSocket(1234);
-			this.puerto = 1234;//ss.getLocalPort();
+			ss = new ServerSocket(puerto);
+			this.puerto = puerto;
+	    	System.out.println("\nServidor P2P iniciado en puerto " + puerto);
+		} catch (IOException e) {
+			System.err.println("\nNo pudo iniciarse el servidor");
+			e.printStackTrace();
+	        System.exit(1);
+		}
+	}
+	
+	public Emisor(String archivo) { //Para usar IP publica
+        super("Emisor");
+		this.nomArchivo = archivo;
+		try {
+			ss = new ServerSocket(0);
+			this.puerto = ss.getLocalPort();
 	    	System.out.println("\nServidor P2P iniciado en puerto " + puerto);
 		} catch (IOException e) {
 			System.err.println("\nNo pudo iniciarse el servidor");

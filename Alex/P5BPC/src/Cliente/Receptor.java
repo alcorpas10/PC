@@ -62,7 +62,7 @@ public class Receptor extends Thread {
 			m = (Mensaje) in.readObject();
 			if (m.getTipo() == MENSAJE_CONEXION) {
 				out.writeObject(new Conexion(MENSAJE_CONFIRMACION_CONEXION));
-				FileOutputStream fout = new FileOutputStream("Hola.jpg");
+				FileOutputStream fout = new FileOutputStream(nomArchivo);
 				m = (Mensaje) in.readObject();
 				while (m.getTipo() == MENSAJE_LINEA_ENVIADA) {
 					fout.write(m.getBuffer());

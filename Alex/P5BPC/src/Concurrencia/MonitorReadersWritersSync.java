@@ -15,7 +15,7 @@ public class MonitorReadersWritersSync {
 		
 	}
 	
-	public synchronized void realese_read() {
+	public synchronized void release_read() {
 		nr = nr -1;
 		if(nr==0)
 			notify();
@@ -30,7 +30,7 @@ public class MonitorReadersWritersSync {
 		
 	}
 	
-	public synchronized void realese_write() {
+	public synchronized void release_write() {
 		
 		nw = nw-1;
 		notifyAll();

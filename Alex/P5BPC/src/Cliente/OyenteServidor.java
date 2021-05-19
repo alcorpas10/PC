@@ -16,6 +16,7 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.util.concurrent.Semaphore;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import Mensajes.Archivo;
 import Mensajes.Informacion;
@@ -28,6 +29,7 @@ public class OyenteServidor extends Thread {
 	private ObjectOutputStream out;
 	private String ip;
 	private Semaphore s;
+	private AtomicInteger puertoCont;
 
     public OyenteServidor(Cliente c, String ip, ObjectInputStream in, ObjectOutputStream out) {
         super("OyenteServidor");
@@ -35,6 +37,7 @@ public class OyenteServidor extends Thread {
         this.ip = ip;
         this.out = out;
         this.in = in;
+        this.puertoCont = new AtomicInteger(10000);
         this.s = new Semaphore(1);
     }
     
@@ -91,7 +94,7 @@ public class OyenteServidor extends Thread {
 						break;
 					case MENSAJE_EMITIR_FICHERO:
 						String nomArchivo = m.getString();
-						Emisor emisor = new Emisor(nomArchivo);
+						Emisor emisor = new Emisor(puertoCont.getAndIncrement(), nomArchivo);
 		    			out.writeObject(new Archivo(MENSAJE_PREPARADO_CLIENTESERVIDOR, ip, m.getOrigen(), m.getId(), emisor.getPuerto(), nomArchivo));
 		    			emisor.start();
 						break;

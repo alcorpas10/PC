@@ -43,7 +43,7 @@ public class Servidor {
 		monitorRW_Synch = new MonitorReadersWritersSync();
 		try {
 			ss = new ServerSocket(puerto);
-	    	System.out.println("Servidor iniciado en puerto " + puerto + " con IP: " + getIP());
+	    	System.out.println("Servidor iniciado en puerto " + puerto + " con IP: " + InetAddress.getLocalHost().getHostAddress()); //getIP()); //Para usar IP publica
 		} catch (IOException e) {
 			System.err.println("No pudo iniciarse el servidor");
 			e.printStackTrace();
@@ -71,7 +71,7 @@ public class Servidor {
         }
 	}
 	
-	private String getIP() {
+	private String getIP() { //Para usar IP publica
         BufferedReader in = null;
         try {
     		URL whatismyip = new URL("http://checkip.amazonaws.com");
@@ -95,16 +95,18 @@ public class Servidor {
 				for (String s : users) {
 					String[] atributos = s.split(",");
 					ArrayList<String> archivos = new ArrayList<String>();
-					for (String a : atributos[2].split(" ")) {
-						archivos.add(a);
-						String usuario = atributos[0] + "," + atributos[1];
-						
-						almacenArchivos.modify(a, usuario, true);
-						
+					if (atributos.length == 3) {
+						for (String a : atributos[2].split(" ")) {
+							archivos.add(a);
+							String usuario = atributos[0] + "," + atributos[1];
+							
+							almacenArchivos.modify(a, usuario, true);
+							
+						}
 					}
 					monitorRW_Synch.request_write();
 					mapaInfoUsuarios.put(atributos[0] + "," + atributos[1], archivos);
-					monitorRW_Synch.realese_write();
+					monitorRW_Synch.release_write();
 				}
 			}
 			br.close();
@@ -112,7 +114,6 @@ public class Servidor {
         	System.out.println("Base de datos cargada correctamente");
 		} catch(Exception e) {
 			System.err.println("Archivo users.txt no existente.");
-			e.printStackTrace();
 		}
 	}
 	
@@ -127,21 +128,19 @@ public class Servidor {
 				br.append(u.getKey());
 				br.append(',');
 				ArrayList<String> lista = u.getValue();
-				for (int i = 0; i < lista.size()-1; i++) {
-					br.append(lista.get(i));
+				for (int i = 0; i < lista.size(); i++) {
 					br.append(' ');
+					br.append(lista.get(i));
 				}
-				br.append(lista.get(lista.size()-1));
 				br.append(';');
 			}
-			monitorRW_Synch.realese_read();
+			monitorRW_Synch.release_read();
 			br.close();
 			outputStream.flush();
 			outputStream.close();
         	System.out.println("Base de datos guardada correctamente");
 		} catch(Exception e) {
 			System.err.println("Error al guardar en users.txt.");
-			e.printStackTrace();
 		}
 	}
 	
@@ -161,11 +160,11 @@ public class Servidor {
 		} else {
 			mapaInfoUsuarios.put(par, archivos);
 		}
-		monitorRW_Synch.realese_write();
+		monitorRW_Synch.release_write();
 		
 		monitorRW_LC.request_write();
-		infoUsuarios.add(new InfoUsuario(id, ip, archivos));
-		monitorRW_LC.realese_write();
+		infoUsuarios.add(new InfoUsuario(id, ip, new ArrayList<String>(archivos)));
+		monitorRW_LC.release_write();
 
 		for (String s : archivos) {
 			 almacenArchivos.modify(s, par, true);
@@ -183,7 +182,7 @@ public class Servidor {
 			r= infoUsuarios.get(i).toString() + "\n";
 		else
 			r= "";
-		monitorRW_LC.realese_read();
+		monitorRW_LC.release_read();
 		return r;
 	}
 	
@@ -219,21 +218,33 @@ public class Servidor {
 			mapaUsuarios.get(key).setDescargando(false);
 	}
 	
+	public boolean hasString(ArrayList<String> lista, String s) {
+		for (String cadena: lista) {
+			if(cadena.equals(s))
+				return true;
+		}
+		return false;
+	}
+	
 	public void descargaTerminada(String id, String ip, String nomArchivo) throws InterruptedException {
 		String key = id + "," + ip;
 		almacenArchivos.modify(nomArchivo, key, true);
 		
 		monitorRW_Synch.request_write();
-		mapaInfoUsuarios.get(key).add(nomArchivo);
-		monitorRW_Synch.request_read();
+		boolean contiene = hasString(mapaInfoUsuarios.get(key), nomArchivo);
+		if (!contiene)
+			mapaInfoUsuarios.get(key).add(nomArchivo);
+		monitorRW_Synch.release_write();
 		
-		
-		monitorRW_LC.request_read();
-		for (InfoUsuario user : infoUsuarios) {
-			if (user.getId().equals(id) && user.getIp().equals(ip))
-				user.getInfo().add(nomArchivo);
+		if (!contiene) {
+			monitorRW_LC.request_write();
+			for (InfoUsuario user : infoUsuarios) {
+				if (user.getId().equals(id) && user.getIp().equals(ip))
+					user.getInfo().add(nomArchivo);
+			}
+			monitorRW_LC.release_write();
 		}
-		monitorRW_LC.realese_read();
+		
 	}
 	
 	public boolean finSesion(String id, String ip) {
@@ -257,7 +268,7 @@ public class Servidor {
 				if (user.getId().equals(id) && user.getIp().equals(ip))
 					infoUsuarios.remove(user);
 			}
-			monitorRW_LC.realese_write();
+			monitorRW_LC.release_write();
 		}
 		else
 			System.err.println("Esto no deberia imprimirse nunca");
