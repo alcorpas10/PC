@@ -14,7 +14,10 @@ public class AlmacenArchivosSem  {
 
 	private HashMap<String, ArrayList<String>> mapaArchivos;
 	
-	
+	/*
+	 * Almacen con Semaforos de tipo Readers-Writers para sincronizar los datos del mapa de los archivos y sus
+	 * correspondientes clientes disponibles que poseen ese archivo 
+	 */
 	public AlmacenArchivosSem() {
 		
 		mapaArchivos = new HashMap<>();

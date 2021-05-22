@@ -15,22 +15,29 @@ import Utils.Usuario;
 
 import java.io.*;
 
+
+/*
+ * 
+ ALUMNOS: DANIELA ALEJANDRA CORDOVA PORTA, ALEJANDRO CORPAS CALVO
+ 
+ Diseños de este servidor y diseño basico de la practica en las imagenes PNG
+ */
 public class Servidor {
 	public static final int MAX_CLIENTES = 200;
 	
 	private ServerSocket ss;
-	private ArrayList<InfoUsuario> infoUsuarios;
-	private HashMap<String, ArrayList<String>> mapaInfoUsuarios;
-	private HashMap<String, Usuario> mapaUsuarios;
+	private ArrayList<InfoUsuario> infoUsuarios; //Lista de Usuarios conectados, mayor concurrencia al enviar usuario por usuario al cliente
+	private HashMap<String, ArrayList<String>> mapaInfoUsuarios; //mapa de usuarios con su informacion
+	private HashMap<String, Usuario> mapaUsuarios; //mapa de los usuarios con el objeto Usuario (para obtener su in y out mas facilmente) y sincronizar sus descargas
 	private int clientes;
 	
 	
-	//Monitores
+	//Monitores, Readers-Writers
 	private MonitorReadersWritersLC monitorRW_LC;
 	private MonitorReadersWritersSync monitorRW_Synch;
 	
 	//Almacen de Archivos y sus usuarios:
-	private AlmacenArchivosSem almacenArchivos;
+	private AlmacenArchivosSem almacenArchivos; //almacen de los archivos con la lista de los usuarios que lo poseen
 	
 	
 	public Servidor(int puerto) {
@@ -85,7 +92,8 @@ public class Servidor {
         return "";
     }	
 	
-	private void cargarArchivo() { //hace falta concurrencia? mejor borrar?
+	//Cargar Base de datos
+	private void cargarArchivo() { 
 		try {
 			InputStream inputStream = new FileInputStream("users.txt");
 			BufferedReader br = new BufferedReader(new InputStreamReader(inputStream));
@@ -117,7 +125,7 @@ public class Servidor {
 		}
 	}
 	
-	
+	//Actualizar txt de Base de Datos
 	private void guardarArchivo() {
 		try {
 			OutputStream outputStream = new FileOutputStream("users.txt");
@@ -143,6 +151,8 @@ public class Servidor {
 			System.err.println("Error al guardar en users.txt.");
 		}
 	}
+	
+	//METODOS PARA GUARDAR NUEVO USUARIO:
 	
 	public void guardarUsuario(String id, String ip, ArrayList<String> archivos, ObjectInputStream in, ObjectOutputStream out) throws InterruptedException {
 		
@@ -175,6 +185,8 @@ public class Servidor {
 		String par = id + "," + ip;
 		mapaUsuarios.put(par, new Usuario(id, ip, in, out));
 	}
+	
+	//Lista de usuarios conectados
 	public String listaUsuarios(int i) throws InterruptedException {
 		monitorRW_LC.request_read();
 		String r;
@@ -186,10 +198,13 @@ public class Servidor {
 		return r;
 	}
 	
+	//Dado archivo, que usuarios tienen archivo para descargar
 	public  ArrayList<String> listaUsuarios (String id, String ip, String nomArchivo){
 		return almacenArchivos.read(nomArchivo);
 	}
 	
+	//Obtener usuario dado ip, id que este en la lista de posibles Clientes disponible para descargar
+	//Se revisa que esten conectados actualmente
 	public Usuario buscarUsuario(String id, String ip,ArrayList<String> lista) {
 		String key = id + "," + ip;
 		if(lista != null) {
@@ -205,6 +220,7 @@ public class Servidor {
 		return null;
 	}
 	
+	//Dado ip, id, obtener usuario
 	public Usuario getUsuario(String id, String ip) {
 		String key = id + "," + ip;
 		if (mapaUsuarios.containsKey(key))
@@ -212,12 +228,14 @@ public class Servidor {
 		return null;
 	}
 	
+	//Un usuario ya no esta descargando, se hace para que pueda actualizar ahora su BD de archivos privada
 	public void desocuparUsuario(String id, String ip) {
 		String key = id + "," + ip;
 		if (mapaUsuarios.containsKey(key))
 			mapaUsuarios.get(key).setDescargando(false);
 	}
 	
+	//Recorrer un array list y encontrar un string
 	public boolean hasString(ArrayList<String> lista, String s) {
 		for (String cadena: lista) {
 			if(cadena.equals(s))
@@ -226,6 +244,7 @@ public class Servidor {
 		return false;
 	}
 	
+	//Se termino una descarga, actualizar la base de datos
 	public void descargaTerminada(String id, String ip, String nomArchivo) throws InterruptedException {
 		String key = id + "," + ip;
 		almacenArchivos.modify(nomArchivo, key, true);
@@ -247,6 +266,7 @@ public class Servidor {
 		
 	}
 	
+	//Usuario cierra sesion, actualiza BD de usuarios conectados
 	public boolean finSesion(String id, String ip) {
     	System.out.println("Cliente desconectandose del servidor...");
     	
@@ -259,7 +279,7 @@ public class Servidor {
 		}
 		else return false;
 	}
-	
+	//Usuario cierra sesion, actualiza BD de usuarios conectados
 	public void actualizarUsuarios(boolean b, String id, String ip) throws InterruptedException {
 		if (b) {
 			monitorRW_LC.request_write();
