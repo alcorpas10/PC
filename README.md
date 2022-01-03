@@ -9,4 +9,4 @@ Repositorio para las prácticas de Programación Concurrente
 
 ## Licencia
 
-[![MIT License](https://img.shields.io/apm/l/atomic-design-ui.svg?)](https://github.com/alcorpas10/FakeDetecter/blob/main/LICENSE)
+[![MIT License](https://img.shields.io/apm/l/atomic-design-ui.svg?)](https://github.com/alcorpas10/PC/blob/main/LICENSE)
